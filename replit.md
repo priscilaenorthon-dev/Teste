@@ -151,11 +151,22 @@ Preferred communication style: Simple, everyday language.
 - Scanner component: React component using getUserMedia API for camera access
 - Badge printing: QR codes displayed in user management page with download capability
 - Loan confirmation: Dual-tab interface allowing Login/Senha or QR Code authentication
-- Security: System validates scanned QR code matches selected loan recipient
-- Backend endpoint: POST /api/auth/validate-qrcode returns user data for matched codes
+- **Security Architecture (Discriminated Union Pattern):**
+  - Backend: Zod-validated discriminated union for loan confirmation
+    - Method "manual": Requires email and password
+    - Method "qrcode": Requires actual QR code string (not boolean flag)
+  - Server-side QR validation: Backend re-validates QR code against database via `storage.getUserByQRCode()`
+  - Defense-in-depth: Backend verifies QR code belongs to selected user (prevents impersonation)
+  - No trust in client flags: System cannot be bypassed by sending fake authentication flags
+- Backend endpoints: 
+  - POST /api/auth/validate-qrcode: Returns user data for matched QR codes (used for UX validation)
+  - POST /api/loans: Re-validates QR code server-side before creating loan (security validation)
 
 **Implemented Features:**
 ✅ QR code authentication for badge-based loan confirmation
+✅ Server-side QR code re-validation (prevents authentication bypass)
+✅ Discriminated union API contract for type-safe loan confirmation
+✅ QR Code display modal with loading states and download functionality
 ✅ Multi-tool loan processing in single transaction
 ✅ Automated PDF generation for custody terms (Termo de Responsabilidade)
 ✅ Advanced reporting with date range, department, and tool type filters

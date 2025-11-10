@@ -1,4 +1,4 @@
-# Design Guidelines: Tool Management System (Ferramentaria)
+# Design Guidelines: Sistema JOMAGA - Tool Management System
 
 ## Design Approach
 **Selected System**: Material Design principles adapted for internal business application

@@ -74,7 +74,7 @@ export default function Login() {
               <span className="material-icons text-4xl text-primary">build</span>
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">Sistema de Ferramentaria</CardTitle>
+          <CardTitle className="text-2xl text-center">Sistema JOMAGA</CardTitle>
           <CardDescription className="text-center">
             Entre com suas credenciais para acessar o sistema
           </CardDescription>

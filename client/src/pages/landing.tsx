@@ -8,7 +8,7 @@ export default function Landing() {
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="material-icons text-primary text-3xl">build</span>
-            <h1 className="text-2xl font-bold">Sistema de Ferramentaria</h1>
+            <h1 className="text-2xl font-bold">Sistema JOMAGA</h1>
           </div>
           <Button data-testid="button-login" onClick={() => window.location.href = "/api/login"}>
             Fazer Login
@@ -18,9 +18,9 @@ export default function Landing() {
 
       <main className="flex-1 container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4">Controle Profissional de Ferramentaria</h2>
+          <h2 className="text-4xl font-bold mb-4">Controle Profissional de Ferramentas</h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Gerencie empréstimos, devoluções, inventário e calibração de ferramentas com eficiência e segurança
+            O Sistema JOMAGA oferece gestão completa de empréstimos, devoluções, inventário e calibração de ferramentas com eficiência e segurança
           </p>
           <Button 
             size="lg" 
@@ -133,7 +133,7 @@ export default function Landing() {
 
       <footer className="border-t bg-card py-6">
         <div className="container mx-auto px-6 text-center text-sm text-muted-foreground">
-          <p>Sistema de Controle de Ferramentaria © {new Date().getFullYear()}</p>
+          <p>Sistema JOMAGA © {new Date().getFullYear()}</p>
         </div>
       </footer>
     </div>

@@ -96,8 +96,8 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <span className="material-icons text-primary text-2xl">build</span>
           <div className="flex flex-col">
-            <span className="font-semibold text-sm">Sistema de</span>
-            <span className="font-semibold text-sm">Ferramentaria</span>
+            <span className="font-semibold text-sm">Sistema</span>
+            <span className="font-semibold text-sm">JOMAGA</span>
           </div>
         </div>
       </SidebarHeader>
@@ -129,7 +129,6 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 border-t">
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user?.profileImageUrl || ""} alt={user?.firstName || "User"} />
             <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">

@@ -56,7 +56,7 @@ function AppContent() {
             <header className="flex items-center justify-between px-4 py-3 border-b bg-card">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Sistema de Ferramentaria</span>
+                <span className="text-sm text-muted-foreground">Sistema JOMAGA</span>
               </div>
             </header>
             <main className="flex-1 overflow-y-auto">

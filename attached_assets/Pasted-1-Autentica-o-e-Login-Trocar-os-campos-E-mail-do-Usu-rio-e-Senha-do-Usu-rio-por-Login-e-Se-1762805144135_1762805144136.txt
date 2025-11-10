@@ -1,0 +1,78 @@
+1. Autenticação e Login
+
+Trocar os campos “E-mail do Usuário” e “Senha do Usuário” por “Login” e “Senha” simples.
+
+Cada usuário terá também um QR Code exclusivo no crachá, que pode ser lido como alternativa de login (autenticação por QR Code).
+
+Essa autenticação será usada na etapa de Confirmação de Recebimento.
+
+🔹 2. Empréstimo e Confirmação de Recebimento
+
+Unificar as etapas “Registrar Empréstimo – Etapa 1” e “Confirmar Recebimento – Etapa 2”, tornando o processo contínuo.
+
+Permitir que o colaborador retire mais de uma ferramenta por vez.
+
+Após confirmar o recebimento, o sistema deve gerar automaticamente um Termo de Responsabilidade (PDF) contendo:
+
+Nome e login do usuário
+
+Data e hora da retirada
+
+Lista das ferramentas retiradas
+
+Assinatura digital ou campo para assinatura manual
+
+O termo deve ser salvo no histórico do sistema e disponível para pesquisa futura.
+
+🔹 3. Relatórios e Dashboards
+a) Relatórios Gerais
+
+Exibir por padrão todas as ferramentas emprestadas até a data atual, listando usuário, setor e data da retirada.
+
+Incluir filtros de pesquisa por período, setor e tipo de ferramenta.
+
+b) Dashboards e Indicadores
+
+Criar um painel administrativo com gráficos avançados de:
+
+Utilização de ferramentas por setor e por período.
+
+Percentual de ferramentas calibradas e vencidas.
+
+Histórico de movimentações.
+
+Indicadores principais:
+
+Total de Ferramentas
+
+Ferramentas Emprestadas
+
+Ferramentas Disponíveis
+
+Ferramentas com Calibração Vencida
+
+Cada indicador deve ser clicável, levando para a página correspondente (lista filtrada).
+
+🔹 4. Controle de Calibração
+
+Criar um dashboard específico para controle de calibração, listando:
+
+Ferramenta
+
+Data da última calibração
+
+Dias restantes até o vencimento
+
+Situação (em dia / próxima do vencimento / vencida)
+
+Utilizar cores visuais (verde, amarelo, vermelho) para fácil leitura.
+
+Permitir emissão de relatório em PDF e exportação para Excel.
+
+🔹 5. Personalização e Layout
+
+Atualizar todas as telas e páginas substituindo o nome antigo “Sistema de Ferramentaria” por “Sistema JOMAGA”.
+
+Ajustar a página inicial com o novo nome e logotipo.
+
+Adotar design limpo e responsivo, compatível com desktop e tablet.

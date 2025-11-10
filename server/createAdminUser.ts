@@ -20,7 +20,7 @@ async function createAdminUser() {
         password: hashedPassword,
         firstName: "Administrador",
         lastName: "Sistema",
-        email: "admin@ferramentaria.com",
+        email: "admin@jomaga.com",
         matriculation: "ADM001",
         department: "TI",
         role: "admin",

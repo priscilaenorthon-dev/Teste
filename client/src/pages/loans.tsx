@@ -28,11 +28,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Tool, User } from "@shared/schema";
 import { generateLoanTermPDF } from "@/lib/generateLoanPDF";
+import { QRScanner } from "@/components/QRScanner";
 
 type SelectedTool = {
   toolId: string;
@@ -50,6 +52,9 @@ export default function Loans() {
   const [currentQuantity, setCurrentQuantity] = useState(1);
   const [userEmail, setUserEmail] = useState("");
   const [userPassword, setUserPassword] = useState("");
+  const [authMethod, setAuthMethod] = useState<"manual" | "qrcode">("manual");
+  const [isScanning, setIsScanning] = useState(false);
+  const [qrValidatedUser, setQrValidatedUser] = useState<User | null>(null);
 
   const { data: tools } = useQuery<Tool[]>({
     queryKey: ["/api/tools"],
@@ -175,11 +180,58 @@ export default function Loans() {
     setStep(2);
   };
 
+  const handleQRScan = async (qrCode: string) => {
+    try {
+      const response = await apiRequest("POST", "/api/auth/validate-qrcode", { qrCode });
+      const userData = await response.json();
+      
+      setQrValidatedUser(userData);
+      setIsScanning(false);
+      
+      // CRITICAL: Verify that the scanned QR code belongs to the selected user
+      if (userData.id !== selectedUser) {
+        toast({
+          title: "QR Code não corresponde",
+          description: `Este QR Code pertence a ${userData.firstName} ${userData.lastName}, mas o empréstimo é para ${selectedUserData?.firstName} ${selectedUserData?.lastName}. Por favor, o usuário correto deve confirmar.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "QR Code validado",
+        description: `Usuário ${userData.firstName} ${userData.lastName} confirmado`,
+      });
+      
+      // Auto-confirm the loan with the validated user
+      createLoanMutation.mutate({
+        tools: selectedTools,
+        userId: selectedUser,
+        userConfirmation: {
+          email: userData.email || userData.username,
+          password: "", // Password not needed for QR validation
+        },
+      });
+    } catch (error: any) {
+      toast({
+        title: "QR Code inválido",
+        description: "Não foi possível validar o QR Code. Tente novamente.",
+        variant: "destructive",
+      });
+      setIsScanning(false);
+    }
+  };
+
   const handleConfirm = () => {
+    if (authMethod === "qrcode") {
+      setIsScanning(true);
+      return;
+    }
+    
     if (!userEmail || !userPassword) {
       toast({
         title: "Confirmação necessária",
-        description: "O usuário deve confirmar com email e senha",
+        description: "O usuário deve confirmar com login e senha",
         variant: "destructive",
       });
       return;
@@ -410,41 +462,87 @@ export default function Loans() {
 
                 <Separator />
 
-                <div className="space-y-4">
-                  <div className="bg-muted/50 p-4 rounded-md">
-                    <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                      <span className="material-icons text-sm text-primary">info</span>
-                      Confirmação do Usuário
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      O usuário deve confirmar o recebimento das ferramentas utilizando seu login e senha cadastrados no sistema.
-                    </p>
-                  </div>
+                {isScanning ? (
+                  <QRScanner
+                    onScan={handleQRScan}
+                    onClose={() => setIsScanning(false)}
+                  />
+                ) : (
+                  <Tabs value={authMethod} onValueChange={(v) => setAuthMethod(v as "manual" | "qrcode")} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="manual" data-testid="tab-manual-auth">
+                        <span className="material-icons text-sm mr-2">login</span>
+                        Login/Senha
+                      </TabsTrigger>
+                      <TabsTrigger value="qrcode" data-testid="tab-qrcode-auth">
+                        <span className="material-icons text-sm mr-2">qr_code_scanner</span>
+                        QR Code
+                      </TabsTrigger>
+                    </TabsList>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="userEmail">Login *</Label>
-                    <Input
-                      id="userEmail"
-                      type="text"
-                      value={userEmail}
-                      onChange={(e) => setUserEmail(e.target.value)}
-                      placeholder="Digite seu login"
-                      data-testid="input-user-email"
-                    />
-                  </div>
+                    <TabsContent value="manual" className="space-y-4 mt-4">
+                      <div className="bg-muted/50 p-4 rounded-md">
+                        <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <span className="material-icons text-sm text-primary">info</span>
+                          Confirmação do Usuário
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          O usuário deve confirmar o recebimento das ferramentas utilizando seu login e senha cadastrados no sistema.
+                        </p>
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="userPassword">Senha *</Label>
-                    <Input
-                      id="userPassword"
-                      type="password"
-                      value={userPassword}
-                      onChange={(e) => setUserPassword(e.target.value)}
-                      placeholder="••••••••"
-                      data-testid="input-user-password"
-                    />
-                  </div>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="userEmail">Login *</Label>
+                        <Input
+                          id="userEmail"
+                          type="text"
+                          value={userEmail}
+                          onChange={(e) => setUserEmail(e.target.value)}
+                          placeholder="Digite seu login"
+                          data-testid="input-user-email"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="userPassword">Senha *</Label>
+                        <Input
+                          id="userPassword"
+                          type="password"
+                          value={userPassword}
+                          onChange={(e) => setUserPassword(e.target.value)}
+                          placeholder="••••••••"
+                          data-testid="input-user-password"
+                        />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="qrcode" className="space-y-4 mt-4">
+                      <div className="bg-muted/50 p-4 rounded-md">
+                        <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <span className="material-icons text-sm text-primary">qr_code_scanner</span>
+                          Autenticação por QR Code
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          O usuário deve escanear o QR Code do crachá para confirmar o recebimento das ferramentas.
+                        </p>
+                      </div>
+
+                      <Card className="border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+                          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="material-icons text-5xl text-primary">qr_code_scanner</span>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="font-medium">Pronto para escanear</p>
+                            <p className="text-sm text-muted-foreground">
+                              Clique em "Escanear QR Code" para abrir a câmera e ler o código do crachá
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                  </Tabs>
+                )}
 
                 <DialogFooter className="flex gap-3 pt-4">
                   <Button
@@ -457,10 +555,19 @@ export default function Loans() {
                   </Button>
                   <Button
                     onClick={handleConfirm}
-                    disabled={createLoanMutation.isPending}
+                    disabled={createLoanMutation.isPending || isScanning}
                     data-testid="button-confirm-loan"
                   >
-                    {createLoanMutation.isPending ? "Confirmando..." : "Confirmar Empréstimo"}
+                    {createLoanMutation.isPending ? (
+                      "Confirmando..."
+                    ) : authMethod === "qrcode" ? (
+                      <>
+                        <span className="material-icons text-sm mr-2">qr_code_scanner</span>
+                        Escanear QR Code
+                      </>
+                    ) : (
+                      "Confirmar Empréstimo"
+                    )}
                   </Button>
                 </DialogFooter>
               </div>

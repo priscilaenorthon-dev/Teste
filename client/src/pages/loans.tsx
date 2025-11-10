@@ -66,7 +66,7 @@ export default function Loans() {
       userConfirmation: { email: string; password: string } 
     }) => {
       const response = await apiRequest("POST", "/api/loans", data);
-      return response;
+      return await response.json();
     },
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
@@ -74,16 +74,24 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       
       // Generate PDF with loan details
-      if (response?.batchId && selectedUserData && user) {
+      if (response?.batchId && selectedUserData && user && tools) {
         const loanTools = selectedTools.map(st => {
-          const tool = tools?.find(t => t.id === st.toolId);
+          const tool = tools.find(t => t.id === st.toolId);
+          if (!tool) {
+            console.error(`Tool not found for ID: ${st.toolId}`);
+            return null;
+          }
           return {
-            tool: tool!,
+            tool,
             quantityLoaned: st.quantityLoaned
           };
-        });
+        }).filter((item): item is { tool: Tool; quantityLoaned: number } => item !== null);
         
-        generateLoanTermPDF(selectedUserData, user, loanTools, response.batchId);
+        if (loanTools.length === selectedTools.length) {
+          generateLoanTermPDF(selectedUserData, user, loanTools, response.batchId);
+        } else {
+          console.error("Some tools could not be found for PDF generation");
+        }
       }
       
       toast({ 

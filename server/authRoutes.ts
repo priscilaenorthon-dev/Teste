@@ -3,6 +3,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { insertUserSchema } from "@shared/schema";
+import { nanoid } from "nanoid";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username é obrigatório"),
@@ -65,10 +66,14 @@ export function setupAuthRoutes(app: Express) {
       // Hash password
       const hashedPassword = await hashPassword(userData.password);
       
+      // Generate unique QR code
+      const qrCode = nanoid(16);
+      
       // Create user
       const newUser = await storage.createUser({
         ...userData,
         password: hashedPassword,
+        qrCode,
       });
 
       // Return user without password
@@ -108,6 +113,25 @@ export function setupAuthRoutes(app: Express) {
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ message: "Erro ao buscar usuário" });
+    }
+  });
+
+  // Validate QR Code route
+  app.post('/api/auth/validate-qrcode', async (req: Request, res: Response) => {
+    try {
+      const { qrCode } = z.object({ qrCode: z.string() }).parse(req.body);
+      
+      const user = await storage.getUserByQRCode(qrCode);
+      if (!user) {
+        return res.status(404).json({ message: "QR Code inválido" });
+      }
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      console.error("QR Code validation error:", error);
+      res.status(400).json({ message: error.message || "Erro ao validar QR Code" });
     }
   });
 }

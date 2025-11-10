@@ -35,6 +35,7 @@ export const users = pgTable("users", {
   matriculation: varchar("matriculation").unique(),
   department: varchar("department"),
   role: varchar("role").notNull().default("user"), // 'admin', 'operator', 'user'
+  qrCode: varchar("qr_code").unique(), // Unique QR code for badge authentication
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

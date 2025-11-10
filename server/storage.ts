@@ -23,6 +23,7 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByQRCode(qrCode: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
@@ -68,6 +69,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByQRCode(qrCode: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.qrCode, qrCode));
     return user;
   }
 

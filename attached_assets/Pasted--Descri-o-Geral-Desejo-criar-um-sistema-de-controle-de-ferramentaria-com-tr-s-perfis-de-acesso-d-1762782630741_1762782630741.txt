@@ -1,0 +1,133 @@
+🔹 Descrição Geral
+
+Desejo criar um sistema de controle de ferramentaria com três perfis de acesso distintos.
+O objetivo é gerenciar o empréstimo, devolução, inventário e calibração das ferramentas utilizadas na empresa.
+
+🔹 Perfis de Usuário
+
+Administrador
+
+Acesso total a todos os módulos e cadastros.
+
+Pode editar, excluir e consultar todos os dados do sistema.
+
+Pode gerar relatórios gerais.
+
+Operador da Ferramentaria
+
+Responsável por registrar empréstimos e devoluções de ferramentas.
+
+Pode visualizar o inventário e gerar termos de cautela.
+
+Recebe alertas sobre ferramentas com calibração vencendo.
+
+Usuário / Colaborador
+
+Possui login e senha próprios.
+
+Pode consultar as ferramentas que pegou emprestadas.
+
+Deve confirmar o recebimento no momento do empréstimo, gerando o termo de cautela.
+
+🔹 Funcionalidades Principais
+1. Cadastro de Ferramentas
+
+Nome da ferramenta
+
+Código ou número de identificação
+
+Classe da ferramenta (ex: corte, medição, aperto, etc.)
+
+Modelo da ferramenta (Normal ou de Calibração)
+
+Quantidade disponível
+
+Status (disponível, emprestada, em calibração, fora de uso)
+
+Data de última calibração (se aplicável)
+
+2. Cadastro de Classes
+
+Nome da classe (ex: Chaves, Micrômetros, Paquímetros, Alicates etc.)
+
+Descrição opcional
+
+3. Cadastro de Modelos
+
+Modelo Normal
+
+Modelo de Calibração (com campo adicional para periodicidade de calibração)
+
+4. Cadastro de Usuários
+
+Nome completo
+
+Matrícula ou ID interno
+
+Setor
+
+Chave de acesso (login)
+
+Senha
+
+Tipo de perfil (Administrador, Operador, Usuário)
+
+🔹 Processo de Empréstimo e Devolução
+
+Etapa 1 — Empréstimo:
+
+O operador seleciona a ferramenta e o usuário que irá pegá-la.
+
+O usuário deve logar com sua chave e senha para confirmar o recebimento.
+
+O sistema gera automaticamente um Termo de Cautela, contendo:
+
+Nome do usuário
+
+Data e hora do empréstimo
+
+Descrição e código da ferramenta
+
+Assinatura eletrônica (confirmação digital)
+
+A ferramenta passa a constar como “emprestada” no inventário.
+
+Etapa 2 — Devolução:
+
+O operador registra a devolução e o sistema dá baixa na ferramenta.
+
+A data e hora da devolução são gravadas no histórico.
+
+O sistema atualiza o status da ferramenta para “disponível”.
+
+🔹 Inventário e Relatórios
+
+Inventário geral com todas as ferramentas cadastradas e seus status.
+
+Relatório de ferramentas emprestadas (com filtro por usuário, setor, ou período).
+
+Histórico completo de empréstimos e devoluções.
+
+Controle de calibração:
+
+Ferramentas de calibração devem possuir campo de intervalo de calibração (ex: 100 dias, 300 dias).
+
+O sistema deve emitir alertas automáticos quando o prazo estiver próximo do vencimento (por exemplo, 10 dias antes).
+
+🔹 Recursos Desejados
+
+Login seguro com autenticação por senha.
+
+Interface intuitiva e responsiva.
+
+Dashboard inicial mostrando:
+
+Quantidade total de ferramentas.
+
+Ferramentas emprestadas no momento.
+
+Ferramentas com calibração próxima.
+
+Opção de exportar relatórios em PDF ou Excel.
+
+Campos personalizáveis (permitir incluir novos tipos de ferramenta).

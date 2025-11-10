@@ -417,24 +417,24 @@ export default function Loans() {
                       Confirmação do Usuário
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      O usuário deve confirmar o recebimento das ferramentas utilizando seu email e senha cadastrados no sistema.
+                      O usuário deve confirmar o recebimento das ferramentas utilizando seu login e senha cadastrados no sistema.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="userEmail">Email do Usuário *</Label>
+                    <Label htmlFor="userEmail">Login *</Label>
                     <Input
                       id="userEmail"
-                      type="email"
+                      type="text"
                       value={userEmail}
                       onChange={(e) => setUserEmail(e.target.value)}
-                      placeholder="usuario@exemplo.com"
+                      placeholder="Digite seu login"
                       data-testid="input-user-email"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="userPassword">Senha do Usuário *</Label>
+                    <Label htmlFor="userPassword">Senha *</Label>
                     <Input
                       id="userPassword"
                       type="password"

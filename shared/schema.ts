@@ -115,6 +115,19 @@ export const insertToolSchema = createInsertSchema(tools).omit({
   createdAt: true,
   updatedAt: true,
   availableQuantity: true,
+}).extend({
+  lastCalibrationDate: z.union([
+    z.string().transform((val) => val ? new Date(val) : null),
+    z.date(),
+    z.null(),
+    z.undefined()
+  ]).optional().nullable(),
+  nextCalibrationDate: z.union([
+    z.string().transform((val) => val ? new Date(val) : null),
+    z.date(),
+    z.null(),
+    z.undefined()
+  ]).optional().nullable(),
 });
 
 export type InsertTool = z.infer<typeof insertToolSchema>;

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Link } from "wouter";
 
 interface DashboardStats {
   totalTools: number;
@@ -78,50 +79,56 @@ export default function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card data-testid="card-total-tools">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Ferramentas</CardTitle>
-            <span className="material-icons text-primary text-2xl">build</span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold" data-testid="text-total-tools">
-              {stats?.totalTools || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Cadastradas no sistema
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/tools" data-testid="link-total-tools">
+          <Card data-testid="card-total-tools" className="cursor-pointer hover-elevate active-elevate-2 transition-transform">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Ferramentas</CardTitle>
+              <span className="material-icons text-primary text-2xl">build</span>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold" data-testid="text-total-tools">
+                {stats?.totalTools || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Cadastradas no sistema
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card data-testid="card-loaned-tools">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ferramentas Emprestadas</CardTitle>
-            <span className="material-icons text-orange-600 dark:text-orange-500 text-2xl">input</span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold" data-testid="text-loaned-tools">
-              {stats?.loanedTools || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Atualmente em uso
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/loans" data-testid="link-loaned-tools">
+          <Card data-testid="card-loaned-tools" className="cursor-pointer hover-elevate active-elevate-2 transition-transform">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ferramentas Emprestadas</CardTitle>
+              <span className="material-icons text-orange-600 dark:text-orange-500 text-2xl">input</span>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold" data-testid="text-loaned-tools">
+                {stats?.loanedTools || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Atualmente em uso
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card data-testid="card-calibration-alerts">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Alertas de Calibração</CardTitle>
-            <span className="material-icons text-destructive text-2xl">event</span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold" data-testid="text-calibration-alerts">
-              {stats?.calibrationAlerts || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Próximas do vencimento
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/calibration" data-testid="link-calibration-alerts">
+          <Card data-testid="card-calibration-alerts" className="cursor-pointer hover-elevate active-elevate-2 transition-transform">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Alertas de Calibração</CardTitle>
+              <span className="material-icons text-destructive text-2xl">event</span>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold" data-testid="text-calibration-alerts">
+                {stats?.calibrationAlerts || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Próximas do vencimento
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

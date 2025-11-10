@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Tool, User } from "@shared/schema";
+import { generateLoanTermPDF } from "@/lib/generateLoanPDF";
 
 type SelectedTool = {
   toolId: string;
@@ -64,15 +65,30 @@ export default function Loans() {
       userId: string; 
       userConfirmation: { email: string; password: string } 
     }) => {
-      await apiRequest("POST", "/api/loans", data);
+      const response = await apiRequest("POST", "/api/loans", data);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      
+      // Generate PDF with loan details
+      if (response?.batchId && selectedUserData && user) {
+        const loanTools = selectedTools.map(st => {
+          const tool = tools?.find(t => t.id === st.toolId);
+          return {
+            tool: tool!,
+            quantityLoaned: st.quantityLoaned
+          };
+        });
+        
+        generateLoanTermPDF(selectedUserData, user, loanTools, response.batchId);
+      }
+      
       toast({ 
         title: "Empréstimos registrados com sucesso!",
-        description: "O Termo de Cautela foi gerado automaticamente."
+        description: "O Termo de Responsabilidade foi gerado e baixado automaticamente."
       });
       handleClose();
     },

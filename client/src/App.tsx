@@ -7,7 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
-import Landing from "@/pages/landing";
+import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Tools from "@/pages/tools";
 import Loans from "@/pages/loans";
@@ -27,12 +27,20 @@ function AppContent() {
     "--sidebar-width-icon": "3rem",
   };
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return (
       <>
         <Switch>
-          <Route path="/" component={Landing} />
-          <Route component={NotFound} />
+          <Route path="/" component={Login} />
+          <Route component={Login} />
         </Switch>
         <Toaster />
       </>

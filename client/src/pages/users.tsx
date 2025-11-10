@@ -38,28 +38,41 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card } from "@/components/ui/card";
 
-const userFormSchema = z.object({
+const userEditFormSchema = z.object({
   matriculation: z.string().min(1, "Matrícula é obrigatória"),
   department: z.string().min(1, "Setor é obrigatório"),
   role: z.enum(["user", "operator", "admin"]),
 });
 
-type UserFormData = z.infer<typeof userFormSchema>;
+const userCreateFormSchema = z.object({
+  username: z.string().min(3, "Username deve ter no mínimo 3 caracteres"),
+  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  firstName: z.string().min(1, "Nome é obrigatório"),
+  lastName: z.string().min(1, "Sobrenome é obrigatório"),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
+  matriculation: z.string().min(1, "Matrícula é obrigatória"),
+  department: z.string().min(1, "Setor é obrigatório"),
+  role: z.enum(["user", "operator", "admin"]),
+});
+
+type UserEditFormData = z.infer<typeof userEditFormSchema>;
+type UserCreateFormData = z.infer<typeof userCreateFormSchema>;
 
 export default function Users() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [open, setOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
-  const form = useForm<UserFormData>({
-    resolver: zodResolver(userFormSchema),
+  const editForm = useForm<UserEditFormData>({
+    resolver: zodResolver(userEditFormSchema),
     defaultValues: {
       matriculation: "",
       department: "",
@@ -67,20 +80,62 @@ export default function Users() {
     },
   });
 
+  const createForm = useForm<UserCreateFormData>({
+    resolver: zodResolver(userCreateFormSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      matriculation: "",
+      department: "",
+      role: "user",
+    },
+  });
+
   const updateMutation = useMutation({
-    mutationFn: async (data: UserFormData & { id: string }) => {
+    mutationFn: async (data: UserEditFormData & { id: string }) => {
       await apiRequest("PATCH", `/api/users/${data.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Usuário atualizado com sucesso!" });
-      setOpen(false);
+      setEditDialogOpen(false);
       setEditingUser(null);
-      form.reset();
+      editForm.reset();
     },
     onError: (error: Error) => {
       toast({
         title: "Erro ao atualizar usuário",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: UserCreateFormData) => {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao criar usuário');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Usuário criado com sucesso!" });
+      setCreateDialogOpen(false);
+      createForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao criar usuário",
         description: error.message,
         variant: "destructive",
       });
@@ -104,27 +159,38 @@ export default function Users() {
     },
   });
 
-  const onSubmit = (data: UserFormData) => {
+  const onEditSubmit = (data: UserEditFormData) => {
     if (editingUser) {
       updateMutation.mutate({ ...data, id: editingUser.id });
     }
   };
 
+  const onCreateSubmit = (data: UserCreateFormData) => {
+    createMutation.mutate(data);
+  };
+
   const handleEdit = (user: User) => {
     setEditingUser(user);
-    form.reset({
+    editForm.reset({
       matriculation: user.matriculation || "",
       department: user.department || "",
       role: (user.role || "user") as "user" | "operator" | "admin",
     });
-    setOpen(true);
+    setEditDialogOpen(true);
   };
 
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
+  const handleEditDialogChange = (newOpen: boolean) => {
+    setEditDialogOpen(newOpen);
     if (!newOpen) {
       setEditingUser(null);
-      form.reset();
+      editForm.reset();
+    }
+  };
+
+  const handleCreateDialogChange = (newOpen: boolean) => {
+    setCreateDialogOpen(newOpen);
+    if (!newOpen) {
+      createForm.reset();
     }
   };
 
@@ -167,6 +233,166 @@ export default function Users() {
           <h1 className="text-3xl font-bold mb-2">Usuários</h1>
           <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
         </div>
+        <Dialog open={createDialogOpen} onOpenChange={handleCreateDialogChange}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-user">
+              <span className="material-icons text-sm mr-2">add</span>
+              Novo Usuário
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Usuário</DialogTitle>
+              <DialogDescription>
+                Preencha os dados para criar um novo usuário no sistema
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...createForm}>
+              <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username *</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-username" placeholder="Ex: joao.silva" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Senha *</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="password" data-testid="input-create-password" placeholder="Mínimo 6 caracteres" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome *</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-firstname" placeholder="Ex: João" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sobrenome *</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-lastname" placeholder="Ex: Silva" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-email" type="email" placeholder="joao.silva@empresa.com" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="matriculation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Matrícula *</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-matriculation" placeholder="Ex: EMP001" className="font-mono" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="department"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Setor *</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-create-department" placeholder="Ex: Produção" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Perfil *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-create-role">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="user">Usuário</SelectItem>
+                            <SelectItem value="operator">Operador</SelectItem>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleCreateDialogChange(false)}
+                    data-testid="button-cancel-create"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createMutation.isPending}
+                    data-testid="button-submit-create"
+                  >
+                    {createMutation.isPending ? "Criando..." : "Criar Usuário"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex gap-4">
@@ -255,7 +481,7 @@ export default function Users() {
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Dialog open={open && editingUser?.id === user.id} onOpenChange={handleOpenChange}>
+                          <Dialog open={editDialogOpen && editingUser?.id === user.id} onOpenChange={handleEditDialogChange}>
                             <DialogTrigger asChild>
                               <Button
                                 variant="ghost"
@@ -273,10 +499,10 @@ export default function Users() {
                                   Atualize as informações do usuário
                                 </DialogDescription>
                               </DialogHeader>
-                              <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                              <Form {...editForm}>
+                                <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
                                   <FormField
-                                    control={form.control}
+                                    control={editForm.control}
                                     name="matriculation"
                                     render={({ field }) => (
                                       <FormItem>
@@ -290,7 +516,7 @@ export default function Users() {
                                   />
 
                                   <FormField
-                                    control={form.control}
+                                    control={editForm.control}
                                     name="department"
                                     render={({ field }) => (
                                       <FormItem>
@@ -304,7 +530,7 @@ export default function Users() {
                                   />
 
                                   <FormField
-                                    control={form.control}
+                                    control={editForm.control}
                                     name="role"
                                     render={({ field }) => (
                                       <FormItem>
@@ -330,7 +556,7 @@ export default function Users() {
                                     <Button
                                       type="button"
                                       variant="outline"
-                                      onClick={() => handleOpenChange(false)}
+                                      onClick={() => handleEditDialogChange(false)}
                                       data-testid="button-cancel-user"
                                     >
                                       Cancelar

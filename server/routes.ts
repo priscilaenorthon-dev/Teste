@@ -1,25 +1,20 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, loadUserFromSession } from "./auth";
+import { setupAuthRoutes } from "./authRoutes";
 import { insertToolSchema, insertToolClassSchema, insertToolModelSchema, insertLoanSchema } from "@shared/schema";
 import { addDays } from "date-fns";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Load user from session for all requests
+  app.use(loadUserFromSession);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Auth routes (login, register, logout)
+  setupAuthRoutes(app);
 
   // Dashboard stats
   app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
@@ -45,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/classes', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -61,7 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/classes/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -76,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/classes/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -102,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/models', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -118,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/models/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -133,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/models/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -159,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tools', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -190,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/tools/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -215,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/tools/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -241,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/loans', isAuthenticated, async (req: any, res) => {
     try {
-      const operator = await storage.getUser(req.user.claims.sub);
+      const operator = await storage.getUser(req.user.id);
       if (operator?.role !== 'operator' && operator?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -264,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loan = await storage.createLoan({
         toolId,
         userId,
-        operatorId: req.user.claims.sub,
+        operatorId: req.user.id,
         quantityLoaned,
         userConfirmation: true,
         userConfirmationDate: new Date(),
@@ -286,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/loans/:id/return', isAuthenticated, async (req: any, res) => {
     try {
-      const operator = await storage.getUser(req.user.claims.sub);
+      const operator = await storage.getUser(req.user.id);
       if (operator?.role !== 'operator' && operator?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -331,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUser(req.user.claims.sub);
+      const currentUser = await storage.getUser(req.user.id);
       if (currentUser?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -346,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await storage.getUser(req.user.claims.sub);
+      const currentUser = await storage.getUser(req.user.id);
       if (currentUser?.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }

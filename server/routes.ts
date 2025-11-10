@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, loadUserFromSession } from "./auth";
+import { setupAuth, isAuthenticated, loadUserFromSession, verifyPassword } from "./auth";
 import { setupAuthRoutes } from "./authRoutes";
 import { insertToolSchema, insertToolClassSchema, insertToolModelSchema, insertLoanSchema } from "@shared/schema";
 import { addDays } from "date-fns";
@@ -240,40 +240,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const { toolId, userId, quantityLoaned, userConfirmation } = req.body;
+      const { tools, userId, userConfirmation } = req.body;
 
-      // Verify user confirmation
+      // Verify user confirmation - email and password
       const user = await storage.getUser(userId);
       if (!user || user.email !== userConfirmation.email) {
-        return res.status(400).json({ message: "User confirmation failed" });
+        return res.status(400).json({ message: "User confirmation failed: invalid email" });
       }
 
-      // Get tool and verify availability
-      const tool = await storage.getTool(toolId);
-      if (!tool || tool.availableQuantity < quantityLoaned) {
-        return res.status(400).json({ message: "Tool not available in requested quantity" });
+      // Verify password
+      const isPasswordValid = await verifyPassword(userConfirmation.password, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "User confirmation failed: invalid password" });
       }
 
-      // Create loan
-      const loan = await storage.createLoan({
-        toolId,
-        userId,
-        operatorId: req.user.id,
-        quantityLoaned,
-        userConfirmation: true,
-        userConfirmationDate: new Date(),
-      } as any);
+      // Validate tools array
+      if (!Array.isArray(tools) || tools.length === 0) {
+        return res.status(400).json({ message: "Tools array is required and must not be empty" });
+      }
 
-      // Update tool availability
-      await storage.updateTool(toolId, {
-        availableQuantity: tool.availableQuantity - quantityLoaned,
-        status: tool.availableQuantity - quantityLoaned === 0 ? 'loaned' : tool.status,
-      } as any);
+      // Verify availability of all tools first (before creating any loans)
+      const toolsData = await Promise.all(
+        tools.map(async ({ toolId, quantityLoaned }) => {
+          const tool = await storage.getTool(toolId);
+          if (!tool || tool.availableQuantity < quantityLoaned) {
+            throw new Error(`Tool ${tool?.code || toolId} not available in requested quantity`);
+          }
+          return { tool, quantityLoaned };
+        })
+      );
 
-      res.json(loan);
+      // Generate a single batchId for all loans in this transaction
+      const batchId = crypto.randomUUID();
+      const now = new Date();
+
+      // Create all loans with the same batchId
+      const createdLoans = await Promise.all(
+        toolsData.map(async ({ tool, quantityLoaned }) => {
+          const loan = await storage.createLoan({
+            batchId,
+            toolId: tool.id,
+            userId,
+            operatorId: req.user.id,
+            quantityLoaned,
+            userConfirmation: true,
+            userConfirmationDate: now,
+          } as any);
+
+          // Update tool availability
+          await storage.updateTool(tool.id, {
+            availableQuantity: tool.availableQuantity - quantityLoaned,
+            status: tool.availableQuantity - quantityLoaned === 0 ? 'loaned' : tool.status,
+          } as any);
+
+          return loan;
+        })
+      );
+
+      res.json({ loans: createdLoans, batchId });
     } catch (error: any) {
-      console.error("Error creating loan:", error);
-      res.status(400).json({ message: error.message || "Failed to create loan" });
+      console.error("Error creating loans:", error);
+      res.status(400).json({ message: error.message || "Failed to create loans" });
     }
   });
 

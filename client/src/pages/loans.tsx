@@ -33,14 +33,20 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Tool, User } from "@shared/schema";
 
+type SelectedTool = {
+  toolId: string;
+  quantityLoaned: number;
+};
+
 export default function Loans() {
   const { user, isOperator } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
-  const [selectedTool, setSelectedTool] = useState("");
+  const [selectedTools, setSelectedTools] = useState<SelectedTool[]>([]);
   const [selectedUser, setSelectedUser] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  const [currentTool, setCurrentTool] = useState("");
+  const [currentQuantity, setCurrentQuantity] = useState(1);
   const [userEmail, setUserEmail] = useState("");
   const [userPassword, setUserPassword] = useState("");
 
@@ -53,7 +59,11 @@ export default function Loans() {
   });
 
   const createLoanMutation = useMutation({
-    mutationFn: async (data: { toolId: string; userId: string; quantityLoaned: number; userConfirmation: { email: string; password: string } }) => {
+    mutationFn: async (data: { 
+      tools: { toolId: string; quantityLoaned: number }[]; 
+      userId: string; 
+      userConfirmation: { email: string; password: string } 
+    }) => {
       await apiRequest("POST", "/api/loans", data);
     },
     onSuccess: () => {
@@ -61,14 +71,14 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ 
-        title: "Empréstimo registrado com sucesso!",
+        title: "Empréstimos registrados com sucesso!",
         description: "O Termo de Cautela foi gerado automaticamente."
       });
       handleClose();
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao registrar empréstimo",
+        title: "Erro ao registrar empréstimos",
         description: error.message,
         variant: "destructive",
       });
@@ -76,28 +86,68 @@ export default function Loans() {
   });
 
   const availableTools = tools?.filter(t => t.availableQuantity > 0) || [];
-  const selectedToolData = tools?.find(t => t.id === selectedTool);
+  const currentToolData = tools?.find(t => t.id === currentTool);
   const selectedUserData = users?.find(u => u.id === selectedUser);
 
   const handleClose = () => {
     setOpen(false);
     setStep(1);
-    setSelectedTool("");
+    setSelectedTools([]);
     setSelectedUser("");
-    setQuantity(1);
+    setCurrentTool("");
+    setCurrentQuantity(1);
     setUserEmail("");
     setUserPassword("");
   };
 
-  const handleStepOne = () => {
-    if (!selectedTool || !selectedUser || quantity < 1) {
+  const handleAddTool = () => {
+    if (!currentTool || currentQuantity < 1) {
       toast({
         title: "Campos obrigatórios",
-        description: "Selecione a ferramenta, usuário e quantidade",
+        description: "Selecione a ferramenta e quantidade",
         variant: "destructive",
       });
       return;
     }
+
+    const toolExists = selectedTools.find(t => t.toolId === currentTool);
+    if (toolExists) {
+      toast({
+        title: "Ferramenta já adicionada",
+        description: "Esta ferramenta já está na lista",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedTools([...selectedTools, { toolId: currentTool, quantityLoaned: currentQuantity }]);
+    setCurrentTool("");
+    setCurrentQuantity(1);
+  };
+
+  const handleRemoveTool = (toolId: string) => {
+    setSelectedTools(selectedTools.filter(t => t.toolId !== toolId));
+  };
+
+  const handleStepOne = () => {
+    if (selectedTools.length === 0) {
+      toast({
+        title: "Nenhuma ferramenta selecionada",
+        description: "Adicione pelo menos uma ferramenta",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedUser) {
+      toast({
+        title: "Usuário não selecionado",
+        description: "Selecione o usuário que receberá as ferramentas",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setStep(2);
   };
 
@@ -112,9 +162,8 @@ export default function Loans() {
     }
     
     createLoanMutation.mutate({
-      toolId: selectedTool,
+      tools: selectedTools,
       userId: selectedUser,
-      quantityLoaned: quantity,
       userConfirmation: {
         email: userEmail,
         password: userPassword,
@@ -151,42 +200,20 @@ export default function Loans() {
               Novo Empréstimo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {step === 1 ? "Registrar Empréstimo - Etapa 1" : "Confirmar Recebimento - Etapa 2"}
               </DialogTitle>
               <DialogDescription>
                 {step === 1 
-                  ? "Selecione a ferramenta e o usuário que irá pegá-la"
-                  : "O usuário deve confirmar o recebimento da ferramenta"}
+                  ? "Selecione as ferramentas e o usuário que irá pegá-las"
+                  : "O usuário deve confirmar o recebimento das ferramentas"}
               </DialogDescription>
             </DialogHeader>
 
             {step === 1 ? (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tool">Ferramenta *</Label>
-                  <Select value={selectedTool} onValueChange={setSelectedTool}>
-                    <SelectTrigger data-testid="select-loan-tool">
-                      <SelectValue placeholder="Selecione a ferramenta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTools.map((tool) => (
-                        <SelectItem key={tool.id} value={tool.id}>
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs font-mono">{tool.code}</code>
-                            <span>{tool.name}</span>
-                            <Badge variant="secondary" className="ml-2">
-                              Disp: {tool.availableQuantity}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="user">Usuário *</Label>
                   <Select value={selectedUser} onValueChange={setSelectedUser}>
@@ -208,18 +235,93 @@ export default function Loans() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantidade *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    max={selectedToolData?.availableQuantity || 1}
-                    value={quantity}
-                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                    data-testid="input-loan-quantity"
-                  />
+                <Separator />
+
+                <div className="space-y-3">
+                  <Label>Adicionar Ferramentas</Label>
+                  
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-2">
+                      <Select value={currentTool} onValueChange={setCurrentTool}>
+                        <SelectTrigger data-testid="select-loan-tool">
+                          <SelectValue placeholder="Selecione a ferramenta" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTools.map((tool) => (
+                            <SelectItem key={tool.id} value={tool.id}>
+                              <div className="flex items-center gap-2">
+                                <code className="text-xs font-mono">{tool.code}</code>
+                                <span>{tool.name}</span>
+                                <Badge variant="secondary" className="ml-2">
+                                  Disp: {tool.availableQuantity}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="w-24 space-y-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max={currentToolData?.availableQuantity || 1}
+                        value={currentQuantity}
+                        onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 1)}
+                        placeholder="Qtd"
+                        data-testid="input-loan-quantity"
+                      />
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={handleAddTool}
+                      disabled={!currentTool}
+                      data-testid="button-add-tool"
+                    >
+                      <span className="material-icons text-sm">add</span>
+                    </Button>
+                  </div>
                 </div>
+
+                {selectedTools.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Ferramentas Selecionadas ({selectedTools.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {selectedTools.map((st) => {
+                        const tool = tools?.find(t => t.id === st.toolId);
+                        return (
+                          <div
+                            key={st.toolId}
+                            className="flex items-center justify-between p-2 rounded-md bg-muted/50"
+                            data-testid={`selected-tool-${st.toolId}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <code className="text-xs font-mono bg-background px-2 py-1 rounded">
+                                {tool?.code}
+                              </code>
+                              <div>
+                                <p className="text-sm font-medium">{tool?.name}</p>
+                                <p className="text-xs text-muted-foreground">Quantidade: {st.quantityLoaned}</p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveTool(st.toolId)}
+                              data-testid={`button-remove-tool-${st.toolId}`}
+                            >
+                              <span className="material-icons text-sm">close</span>
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
 
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
@@ -244,13 +346,6 @@ export default function Loans() {
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-muted-foreground">Ferramenta:</p>
-                        <p className="font-medium">{selectedToolData?.name}</p>
-                        <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded">
-                          {selectedToolData?.code}
-                        </code>
-                      </div>
-                      <div>
                         <p className="text-muted-foreground">Usuário:</p>
                         <p className="font-medium">
                           {selectedUserData?.firstName} {selectedUserData?.lastName}
@@ -260,12 +355,30 @@ export default function Loans() {
                         )}
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Quantidade:</p>
-                        <p className="font-medium">{quantity}</p>
-                      </div>
-                      <div>
                         <p className="text-muted-foreground">Operador:</p>
                         <p className="font-medium">{user?.firstName} {user?.lastName}</p>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <p className="text-sm font-medium mb-2">Ferramentas ({selectedTools.length}):</p>
+                      <div className="space-y-2">
+                        {selectedTools.map((st) => {
+                          const tool = tools?.find(t => t.id === st.toolId);
+                          return (
+                            <div key={st.toolId} className="flex items-center justify-between text-sm p-2 rounded bg-muted/30">
+                              <div className="flex items-center gap-2">
+                                <code className="text-xs font-mono bg-background px-2 py-0.5 rounded">
+                                  {tool?.code}
+                                </code>
+                                <span>{tool?.name}</span>
+                              </div>
+                              <Badge variant="secondary">Qtd: {st.quantityLoaned}</Badge>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </CardContent>
@@ -280,7 +393,7 @@ export default function Loans() {
                       Confirmação do Usuário
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      O usuário deve confirmar o recebimento da ferramenta utilizando seu email e senha cadastrados no sistema.
+                      O usuário deve confirmar o recebimento das ferramentas utilizando seu email e senha cadastrados no sistema.
                     </p>
                   </div>
 
@@ -344,9 +457,9 @@ export default function Loans() {
                   <span className="text-sm font-bold text-primary">1</span>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-1">Seleção da Ferramenta e Usuário</h4>
+                  <h4 className="font-medium mb-1">Seleção de Ferramentas e Usuário</h4>
                   <p className="text-sm text-muted-foreground">
-                    O operador seleciona qual ferramenta será emprestada e para qual usuário.
+                    O operador seleciona quais ferramentas serão emprestadas e para qual usuário.
                   </p>
                 </div>
               </div>
@@ -384,7 +497,7 @@ export default function Loans() {
                 <div>
                   <h4 className="font-medium mb-1">Atualização do Inventário</h4>
                   <p className="text-sm text-muted-foreground">
-                    A ferramenta é marcada como emprestada e o inventário é atualizado.
+                    As ferramentas são marcadas como emprestadas e o inventário é atualizado.
                   </p>
                 </div>
               </div>

@@ -123,6 +123,7 @@ export type Tool = typeof tools.$inferSelect;
 // Loans (Empréstimos)
 export const loans = pgTable("loans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id"), // Groups multiple loans made together
   toolId: varchar("tool_id").notNull().references(() => tools.id),
   userId: varchar("user_id").notNull().references(() => users.id),
   operatorId: varchar("operator_id").notNull().references(() => users.id), // Who registered the loan

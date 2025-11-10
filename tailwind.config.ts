@@ -83,9 +83,20 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        sans: ["Inter", "var(--font-sans)"],
         serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        mono: ["Roboto Mono", "var(--font-mono)"],
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+      },
+      minHeight: {
+        '8': '2rem',
+        '9': '2.25rem',
+        '10': '2.5rem',
+        '12': '3rem',
+        '32': '8rem',
       },
       keyframes: {
         "accordion-down": {

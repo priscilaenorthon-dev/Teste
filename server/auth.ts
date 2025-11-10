@@ -19,15 +19,22 @@ declare global {
 }
 
 export async function setupAuth(app: Express) {
+  // Trust proxy for Replit deployments (required for secure cookies in production)
+  if (process.env.NODE_ENV === "production") {
+    app.set('trust proxy', 1);
+  }
+
   // Session configuration
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "ferramentaria-secret-key-change-in-production",
       resave: false,
       saveUninitialized: false,
+      proxy: true, // Enable proxy support for Replit deployments
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
+        sameSite: 'lax', // CSRF protection
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       },
     })

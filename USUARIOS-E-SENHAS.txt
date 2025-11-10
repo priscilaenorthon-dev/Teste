@@ -1,0 +1,291 @@
+═══════════════════════════════════════════════════════════════
+  SISTEMA JOMAGA - CREDENCIAIS PARA APRESENTAÇÃO AO CLIENTE
+═══════════════════════════════════════════════════════════════
+
+📅 Data de Criação: 10 de Novembro de 2025
+📊 Total de Ferramentas: 45 (variadas com quantidades aleatórias)
+👥 Total de Usuários: 7 (2 admins, 1 operador, 4 colaboradores)
+
+═══════════════════════════════════════════════════════════════
+
+🔴 ADMINISTRADORES (Acesso Total ao Sistema)
+═══════════════════════════════════════════════════════════════
+
+1️⃣ ADMIN PADRÃO
+   Usuário: admin
+   Senha: password123
+   Nome: Admin Teste
+   Email: admin@test.com
+   Departamento: Administração
+   
+   PERMISSÕES:
+   ✅ Criar, editar e excluir usuários
+   ✅ Gerenciar todas as ferramentas
+   ✅ Criar classes e modelos
+   ✅ Visualizar todos os empréstimos
+   ✅ Gerar relatórios completos
+   ✅ Dashboard administrativo completo
+   ✅ Baixar QR Codes de todos os usuários
+
+---
+
+2️⃣ NORTHON FERNANDES MORAES
+   Usuário: priscilaenorthon
+   Senha: senha123
+   Nome: NORTHON FERNANDES MORAES
+   Email: priscilaenorthon@gmail.com
+   Departamento: Administração
+   
+   PERMISSÕES: Iguais ao Admin Padrão
+
+═══════════════════════════════════════════════════════════════
+
+🟡 OPERADORES (Gestão de Ferramentas e Empréstimos)
+═══════════════════════════════════════════════════════════════
+
+3️⃣ OPERADOR PADRÃO
+   Usuário: operator
+   Senha: password123
+   Nome: Operador Teste
+   Email: operator@test.com
+   Departamento: Ferramentaria
+   
+   PERMISSÕES:
+   ✅ Criar e editar ferramentas
+   ✅ Processar empréstimos (Login/Senha OU QR Code)
+   ✅ Processar devoluções
+   ✅ Gerar relatórios filtrados
+   ✅ Dashboard operacional
+   ❌ NÃO pode gerenciar usuários
+
+═══════════════════════════════════════════════════════════════
+
+🟢 COLABORADORES (Usuários Finais)
+═══════════════════════════════════════════════════════════════
+
+4️⃣ USUARIO TESTE
+   Usuário: user
+   Senha: password123
+   Nome: Usuario Teste
+   Email: user@test.com
+   Departamento: Produção
+   
+   PERMISSÕES:
+   ✅ Ver seus próprios empréstimos
+   ✅ Confirmar recebimento de ferramentas
+   ❌ Não vê empréstimos de outros usuários
+
+---
+
+5️⃣ PEDRO CARDOSO FERREIRA
+   Usuário: pasdasds
+   Senha: senha123
+   Nome: Pedro Cardoso Ferreira
+   Email: pasdasds@gmail.com
+   Departamento: Oficina
+
+---
+
+6️⃣ COLABORADOR SOBRENOME
+   Usuário: u2tag2009
+   Senha: senha123
+   Nome: Colaborador Sobrenome
+   Email: u2tag2009@gmail.com
+   Departamento: Oficina
+
+═══════════════════════════════════════════════════════════════
+
+🔧 FERRAMENTAS NO SISTEMA (45 Total)
+═══════════════════════════════════════════════════════════════
+
+FERRAMENTAS DE MEDIÇÃO E PRECISÃO:
+✓ Paquímetro Digital 150mm (12 unidades)
+✓ Paquímetro Analógico 200mm (12 unidades)
+✓ Micrômetro Externo 0-25mm (14 unidades)
+✓ Micrômetro Interno 50-75mm (11 unidades)
+✓ Relógio Comparador 0.01mm (11 unidades)
+✓ Trena 5m (12 unidades)
+✓ Trena 10m Profissional (11 unidades)
+✓ Esquadro 300mm (15 unidades)
+✓ Nível Bolha 60cm (17 unidades)
+✓ Nível a Laser (9 unidades)
+
+FERRAMENTAS ELÉTRICAS:
+✓ Parafusadeira Elétrica 12V (13 unidades)
+✓ Parafusadeira 18V Profissional (13 unidades)
+✓ Furadeira de Impacto 1/2 (9 unidades)
+✓ Esmerilhadeira 4.1/2 (9 unidades)
+✓ Serra Tico-Tico (9 unidades)
+✓ Lixa Orbital Elétrica (11 unidades)
+✓ Soprador Térmico 2000W (9 unidades)
+
+FERRAMENTAS MANUAIS:
+✓ Chave Philips #2 (19 unidades)
+✓ Chave Philips #3 (2 unidades)
+✓ Chave Fenda 6mm (20 unidades)
+✓ Chave Fenda 8mm (6 unidades)
+✓ Alicate Universal 8 (16 unidades)
+✓ Alicate de Corte 6 (1 unidade)
+✓ Alicate de Pressão 10 (12 unidades)
+✓ Martelo de Borracha (2 unidades)
+✓ Martelo Unha 25mm (9 unidades)
+✓ Marreta 2kg (1 unidade)
+✓ Talhadeira 1/2 (12 unidades)
+✓ Punção Automático (13 unidades)
+✓ Lima Chata Bastarda 10 (3 unidades)
+✓ Lima Redonda 8 (18 unidades)
+✓ Arco de Serra Manual (12 unidades)
+
+CONSUMÍVEIS E ACESSÓRIOS:
+✓ Jogo de Brocas HSS 1-13mm (2 unidades)
+✓ Broca SDS 12mm (1 unidade)
+✓ Broca SDS 16mm (14 unidades)
+✓ Disco de Corte 4.1/2 (18 unidades)
+✓ Disco de Desbaste 4.1/2 (6 unidades)
+✓ Pistola de Cola Quente (1 unidade)
+✓ Grampeador Pneumático (1 unidade)
+
+EQUIPAMENTOS:
+✓ Compressor de Ar 50L (16 unidades)
+
+FERRAMENTAS ANTIGAS (já cadastradas):
+✓ Parafuso (100 unidades)
+✓ Prego (256 unidades)
+✓ Parafusadeira (9 unidades)
+✓ Parafuso 2 (13 unidades)
+✓ Teste Calibração (5 unidades)
+
+═══════════════════════════════════════════════════════════════
+
+📊 CARACTERÍSTICAS DAS FERRAMENTAS
+═══════════════════════════════════════════════════════════════
+
+CLASSES DE FERRAMENTAS:
+• Consumível
+• Ferramenta Comum
+• Paquímetro
+
+MODELOS DE CONTROLE:
+• Normal - Sem calibração obrigatória
+• Calibração Paquimetro - Calibração a cada 55 dias
+• Parafusadeira Nova - Calibração a cada 6 dias
+
+ESTADOS POSSÍVEIS:
+• Disponível (available)
+• Emprestada (loaned)
+• Em calibração (calibration)
+• Fora de serviço (out_of_service)
+
+═══════════════════════════════════════════════════════════════
+
+🎯 ROTEIRO SUGERIDO PARA APRESENTAÇÃO
+═══════════════════════════════════════════════════════════════
+
+PARTE 1: LOGIN E DASHBOARD (5 minutos)
+1. Fazer login como ADMIN (admin / password123)
+2. Mostrar dashboard com métricas
+3. Explicar os 3 perfis de acesso
+
+PARTE 2: GERENCIAMENTO DE USUÁRIOS (5 minutos)
+1. Navegar para página de Usuários
+2. Mostrar lista de 7 usuários cadastrados
+3. Clicar no ícone QR Code de um usuário
+4. Mostrar QR Code gerado
+5. Explicar funcionalidade de download para crachá
+
+PARTE 3: FERRAMENTAS E INVENTÁRIO (5 minutos)
+1. Navegar para página de Ferramentas
+2. Mostrar as 45 ferramentas cadastradas
+3. Filtrar por classe/modelo
+4. Mostrar ferramentas com calibração
+5. Editar uma ferramenta (demonstração)
+
+PARTE 4: EMPRÉSTIMO VIA QR CODE (10 minutos) ⭐ DESTAQUE
+1. Fazer logout e login como OPERADOR (operator / password123)
+2. Clicar em "Novo Empréstimo"
+3. Selecionar várias ferramentas
+4. Selecionar usuário
+5. Na confirmação, mostrar DUAS abas:
+   - Aba "Login/Senha" (método tradicional)
+   - Aba "QR Code" (método inovador)
+6. Demonstrar QR Code:
+   - Clicar "Escanear QR Code"
+   - Aproximar crachá (ou usar celular no QR da tela)
+   - Sistema valida automaticamente
+7. PDF do termo baixa automaticamente
+
+PARTE 5: EMPRÉSTIMO VIA LOGIN/SENHA (5 minutos)
+1. Criar outro empréstimo
+2. Desta vez usar aba "Login/Senha"
+3. Usuário digita suas credenciais
+4. Confirmar e baixar PDF
+
+PARTE 6: RELATÓRIOS E DEVOLUÇÕES (5 minutos)
+1. Processar uma devolução
+2. Gerar relatório filtrado por:
+   - Data
+   - Departamento
+   - Tipo de ferramenta
+3. Exportar para PDF/Excel
+
+PARTE 7: VISÃO DO COLABORADOR (3 minutos)
+1. Fazer logout e login como USER (user / password123)
+2. Mostrar que vê apenas seus empréstimos
+3. Confirmar recebimento
+
+═══════════════════════════════════════════════════════════════
+
+📱 FUNCIONALIDADES QR CODE - DIFERENCIAIS
+═══════════════════════════════════════════════════════════════
+
+✅ SEGURANÇA SERVER-SIDE
+   • QR Code validado no servidor (não pode ser falsificado)
+   • Sistema verifica se QR pertence ao usuário selecionado
+   • Impossível bypass por manipulação do cliente
+
+✅ DUAL AUTHENTICATION
+   • Login/Senha: Método tradicional
+   • QR Code: Método rápido com crachá
+
+✅ GERAÇÃO AUTOMÁTICA
+   • Todos os usuários têm QR Code único
+   • Gerado automaticamente no cadastro
+
+✅ DOWNLOAD PARA IMPRESSÃO
+   • Qualidade alta (600x600px)
+   • Formato PNG
+   • Pronto para imprimir em crachás
+
+═══════════════════════════════════════════════════════════════
+
+📂 ARQUIVOS CRIADOS PARA VOCÊ
+═══════════════════════════════════════════════════════════════
+
+1. production-data-export.sql
+   → Arquivo SQL com TODOS os dados (30KB)
+   → Pronto para importar em produção
+
+2. GUIA-IMPORTACAO-PRODUCAO.md
+   → Instruções passo-a-passo para importar
+   → Troubleshooting incluído
+
+3. USUARIOS-E-SENHAS.txt (este arquivo)
+   → Todas as credenciais
+   → Roteiro de apresentação
+
+═══════════════════════════════════════════════════════════════
+
+🔒 SEGURANÇA DAS SENHAS
+═══════════════════════════════════════════════════════════════
+
+• Todas as senhas estão hasheadas com bcrypt (10 rounds)
+• Impossível descobrir senha original, mesmo com acesso ao banco
+• QR Codes únicos gerados com nanoid(16)
+• Sistema valida tudo no servidor (defense-in-depth)
+
+═══════════════════════════════════════════════════════════════
+
+BOA APRESENTAÇÃO! 🚀
+
+Qualquer dúvida, consulte o GUIA-IMPORTACAO-PRODUCAO.md
+═══════════════════════════════════════════════════════════════

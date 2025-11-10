@@ -173,9 +173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tool = await storage.createTool({
         ...validated,
-        availableQuantity: validated.quantity,
         nextCalibrationDate: nextCalibrationDate,
-      });
+      } as any);
       res.json(tool);
     } catch (error: any) {
       console.error("Error creating tool:", error);
@@ -263,14 +262,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quantityLoaned,
         userConfirmation: true,
         userConfirmationDate: new Date(),
-        status: 'active',
-      });
+      } as any);
 
       // Update tool availability
       await storage.updateTool(toolId, {
         availableQuantity: tool.availableQuantity - quantityLoaned,
         status: tool.availableQuantity - quantityLoaned === 0 ? 'loaned' : tool.status,
-      });
+      } as any);
 
       res.json(loan);
     } catch (error: any) {
@@ -295,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateLoan(req.params.id, {
         status: 'returned',
         returnDate: new Date(),
-      });
+      } as any);
 
       // Update tool availability
       const tool = await storage.getTool(loan.toolId);
@@ -303,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateTool(loan.toolId, {
           availableQuantity: tool.availableQuantity + loan.quantityLoaned,
           status: 'available',
-        });
+        } as any);
       }
 
       res.json({ success: true });

@@ -68,7 +68,9 @@ export default function Loans() {
     mutationFn: async (data: { 
       tools: { toolId: string; quantityLoaned: number }[]; 
       userId: string; 
-      userConfirmation: { email: string; password: string } 
+      userConfirmation: 
+        | { method: "manual"; email: string; password: string }
+        | { method: "qrcode"; qrCode: string }
     }) => {
       const response = await apiRequest("POST", "/api/loans", data);
       return await response.json();
@@ -203,13 +205,13 @@ export default function Loans() {
         description: `Usuário ${userData.firstName} ${userData.lastName} confirmado`,
       });
       
-      // Auto-confirm the loan with the validated user
+      // Auto-confirm the loan with QR code authentication
       createLoanMutation.mutate({
         tools: selectedTools,
         userId: selectedUser,
         userConfirmation: {
-          email: userData.email || userData.username,
-          password: "", // Password not needed for QR validation
+          method: "qrcode",
+          qrCode: qrCode, // Send actual QR code for server-side validation
         },
       });
     } catch (error: any) {
@@ -241,6 +243,7 @@ export default function Loans() {
       tools: selectedTools,
       userId: selectedUser,
       userConfirmation: {
+        method: "manual",
         email: userEmail,
         password: userPassword,
       },

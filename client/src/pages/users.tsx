@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import QRCode from "qrcode";
 
 const userEditFormSchema = z.object({
   matriculation: z.string().min(1, "Matrícula é obrigatória"),
@@ -66,6 +67,8 @@ export default function Users() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [selectedUserForQR, setSelectedUserForQR] = useState<User | null>(null);
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -439,13 +442,14 @@ export default function Users() {
                 <TableHead>Matrícula</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead>Perfil</TableHead>
+                <TableHead className="text-center">QR Code</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
+                  <TableCell colSpan={7} className="text-center py-12">
                     <span className="material-icons text-4xl text-muted-foreground mb-2 block">inbox</span>
                     <p className="text-muted-foreground">Nenhum usuário encontrado</p>
                   </TableCell>
@@ -478,6 +482,23 @@ export default function Users() {
                       </TableCell>
                       <TableCell>{user.department || "-"}</TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell className="text-center">
+                        {user.qrCode ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedUserForQR(user);
+                              setQrDialogOpen(true);
+                            }}
+                            data-testid={`button-view-qr-${user.id}`}
+                          >
+                            <span className="material-icons text-sm">qr_code_2</span>
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Dialog open={editDialogOpen && editingUser?.id === user.id} onOpenChange={handleEditDialogChange}>
@@ -582,6 +603,121 @@ export default function Users() {
           </Table>
         </div>
       )}
+
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Code do Usuário</DialogTitle>
+            <DialogDescription>
+              Use este QR Code para confirmação rápida de empréstimos
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUserForQR && (
+            <QRCodeDisplay 
+              user={selectedUserForQR} 
+              onClose={() => setQrDialogOpen(false)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function QRCodeDisplay({ user, onClose }: { user: User; onClose: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [qrImageUrl, setQrImageUrl] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (user.qrCode && canvasRef.current) {
+      setIsLoading(true);
+      
+      QRCode.toCanvas(
+        canvasRef.current,
+        user.qrCode,
+        {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        },
+        (error) => {
+          if (error) {
+            console.error("Error generating QR code:", error);
+          }
+          setIsLoading(false);
+        }
+      );
+
+      QRCode.toDataURL(user.qrCode, { width: 600, margin: 2 }, (err, url) => {
+        if (!err) {
+          setQrImageUrl(url);
+        }
+      });
+    }
+    
+    // Cleanup function
+    return () => {
+      setQrImageUrl("");
+      setIsLoading(true);
+    };
+  }, [user.qrCode]);
+
+  const handleDownload = () => {
+    if (qrImageUrl) {
+      const link = document.createElement("a");
+      link.href = qrImageUrl;
+      link.download = `qrcode-${user.username}.png`;
+      link.click();
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-6 flex flex-col items-center space-y-4">
+          <div className="bg-white p-4 rounded-md relative">
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                <span className="material-icons animate-spin text-primary">refresh</span>
+              </div>
+            )}
+            <canvas ref={canvasRef} data-testid="qr-code-canvas" />
+          </div>
+          
+          <div className="text-center space-y-1">
+            <p className="font-medium text-lg">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {user.matriculation}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={handleDownload}
+          className="flex-1"
+          data-testid="button-download-qr"
+        >
+          <span className="material-icons text-sm mr-2">download</span>
+          Baixar QR Code
+        </Button>
+        <Button
+          onClick={onClose}
+          className="flex-1"
+          data-testid="button-close-qr"
+        >
+          Fechar
+        </Button>
+      </div>
     </div>
   );
 }

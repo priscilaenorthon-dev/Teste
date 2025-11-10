@@ -74,7 +74,8 @@ Preferred communication style: Simple, everyday language.
    - Authentication: username (unique), hashed password
    - Profile: firstName, lastName, email, matriculation (employee ID), department
    - Role-based access control field
-   - QR code capability planned for badge-based authentication
+   - QR code: unique qrCode field (varchar, unique) for badge-based authentication
+   - QR codes automatically generated using nanoid(16) for all users
 
 2. **Tools Table:**
    - Identification: code (unique), name
@@ -145,9 +146,17 @@ Preferred communication style: Simple, everyday language.
 - Google Fonts CDN: Inter and Roboto Mono font families
 - Material Icons: Icon font for consistent UI symbols
 
-**Planned Features (From Requirements):**
-- QR code authentication for badge-based login
-- Multi-tool loan processing in single transaction
-- Automated PDF generation for custody terms (Termo de Responsabilidade)
-- Advanced reporting with date range, department, and tool type filters
-- Dashboard analytics with usage metrics and calibration compliance tracking
+**QR Code Implementation:**
+- Library: @zxing/library for QR code scanning, qrcode for image generation
+- Scanner component: React component using getUserMedia API for camera access
+- Badge printing: QR codes displayed in user management page with download capability
+- Loan confirmation: Dual-tab interface allowing Login/Senha or QR Code authentication
+- Security: System validates scanned QR code matches selected loan recipient
+- Backend endpoint: POST /api/auth/validate-qrcode returns user data for matched codes
+
+**Implemented Features:**
+✅ QR code authentication for badge-based loan confirmation
+✅ Multi-tool loan processing in single transaction
+✅ Automated PDF generation for custody terms (Termo de Responsabilidade)
+✅ Advanced reporting with date range, department, and tool type filters
+✅ Dashboard analytics with usage metrics and calibration compliance tracking

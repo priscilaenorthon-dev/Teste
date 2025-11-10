@@ -5,6 +5,27 @@ import { setupAuth, isAuthenticated, loadUserFromSession, verifyPassword } from 
 import { setupAuthRoutes } from "./authRoutes";
 import { insertToolSchema, insertToolClassSchema, insertToolModelSchema, insertLoanSchema } from "@shared/schema";
 import { addDays } from "date-fns";
+import { z } from "zod";
+
+// Validation schema for loan creation
+const createLoanSchema = z.object({
+  tools: z.array(z.object({
+    toolId: z.string(),
+    quantityLoaned: z.number().positive(),
+  })).min(1),
+  userId: z.string(),
+  userConfirmation: z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal("manual"),
+      email: z.string(),
+      password: z.string(),
+    }),
+    z.object({
+      method: z.literal("qrcode"),
+      qrCode: z.string(),
+    }),
+  ]),
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -240,18 +261,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const { tools, userId, userConfirmation } = req.body;
-
-      // Verify user confirmation - email and password
-      const user = await storage.getUser(userId);
-      if (!user || user.email !== userConfirmation.email) {
-        return res.status(400).json({ message: "User confirmation failed: invalid email" });
+      // Validate request body with Zod schema
+      const validationResult = createLoanSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: validationResult.error.errors 
+        });
       }
 
-      // Verify password
-      const isPasswordValid = await verifyPassword(userConfirmation.password, user.password);
-      if (!isPasswordValid) {
-        return res.status(400).json({ message: "User confirmation failed: invalid password" });
+      const { tools, userId, userConfirmation } = validationResult.data;
+
+      // Verify user confirmation
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+
+      // Verify based on confirmation method
+      if (userConfirmation.method === "qrcode") {
+        // QR code path: server-side validation of QR code
+        const qrUser = await storage.getUserByQRCode(userConfirmation.qrCode);
+        if (!qrUser) {
+          return res.status(400).json({ message: "User confirmation failed: invalid QR code" });
+        }
+        
+        // CRITICAL: Verify QR code belongs to the selected user
+        if (qrUser.id !== userId) {
+          return res.status(400).json({ message: "User confirmation failed: QR code does not belong to selected user" });
+        }
+      } else {
+        // Manual credential path: verify email/username and password
+        if (user.email !== userConfirmation.email && user.username !== userConfirmation.email) {
+          return res.status(400).json({ message: "User confirmation failed: invalid credentials" });
+        }
+
+        // Verify password
+        const isPasswordValid = await verifyPassword(userConfirmation.password, user.password);
+        if (!isPasswordValid) {
+          return res.status(400).json({ message: "User confirmation failed: invalid password" });
+        }
       }
 
       // Validate tools array

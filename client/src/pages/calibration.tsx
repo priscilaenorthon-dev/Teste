@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -13,6 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Tool } from "@shared/schema";
+import { utils, writeFile } from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function Calibration() {
   const { data: tools, isLoading } = useQuery<Tool[]>({
@@ -78,13 +82,96 @@ export default function Calibration() {
     return daysA - daysB;
   });
 
+  const exportToExcel = () => {
+    const data = sortedTools.map(tool => {
+      const daysRemaining = differenceInDays(new Date(tool.nextCalibrationDate!), now);
+      const urgency = daysRemaining < 0 ? 'Vencida' : daysRemaining <= 3 ? 'Urgente' : daysRemaining <= 7 ? 'Atenção' : 'Normal';
+      
+      return {
+        'Código': tool.code,
+        'Nome': tool.name,
+        'Última Calibração': tool.lastCalibrationDate 
+          ? format(new Date(tool.lastCalibrationDate), "dd/MM/yyyy", { locale: ptBR })
+          : '-',
+        'Próxima Calibração': format(new Date(tool.nextCalibrationDate!), "dd/MM/yyyy", { locale: ptBR }),
+        'Dias Restantes': daysRemaining < 0 ? `${Math.abs(daysRemaining)} dias atrasado` : `${daysRemaining} dias`,
+        'Situação': urgency
+      };
+    });
+    
+    const worksheet = utils.json_to_sheet(data);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'Calibração');
+    writeFile(workbook, `calibracao_${format(now, 'dd-MM-yyyy')}.xlsx`);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Sistema JOMAGA - Controle de Calibração', 14, 20);
+    
+    doc.setFontSize(11);
+    doc.text(`Data: ${format(now, "dd/MM/yyyy HH:mm", { locale: ptBR })}`, 14, 28);
+    
+    const tableData = sortedTools.map(tool => {
+      const daysRemaining = differenceInDays(new Date(tool.nextCalibrationDate!), now);
+      const urgency = daysRemaining < 0 ? 'Vencida' : daysRemaining <= 3 ? 'Urgente' : daysRemaining <= 7 ? 'Atenção' : 'Normal';
+      
+      return [
+        tool.code,
+        tool.name,
+        tool.lastCalibrationDate 
+          ? format(new Date(tool.lastCalibrationDate), "dd/MM/yyyy", { locale: ptBR })
+          : '-',
+        format(new Date(tool.nextCalibrationDate!), "dd/MM/yyyy", { locale: ptBR }),
+        daysRemaining < 0 ? `${Math.abs(daysRemaining)} dias atrasado` : `${daysRemaining} dias`,
+        urgency
+      ];
+    });
+    
+    autoTable(doc, {
+      startY: 35,
+      head: [['Código', 'Nome', 'Última Calibração', 'Próxima Calibração', 'Dias Restantes', 'Situação']],
+      body: tableData,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+    
+    doc.save(`calibracao_${format(now, 'dd-MM-yyyy')}.pdf`);
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Controle de Calibração</h1>
-        <p className="text-muted-foreground">
-          Acompanhe as ferramentas que necessitam calibração periódica
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Controle de Calibração</h1>
+          <p className="text-muted-foreground">
+            Acompanhe as ferramentas que necessitam calibração periódica
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={exportToExcel}
+            disabled={sortedTools.length === 0}
+            data-testid="button-export-excel"
+            className="gap-2"
+          >
+            <span className="material-icons text-base">table_chart</span>
+            Exportar Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={exportToPDF}
+            disabled={sortedTools.length === 0}
+            data-testid="button-export-pdf"
+            className="gap-2"
+          >
+            <span className="material-icons text-base">picture_as_pdf</span>
+            Exportar PDF
+          </Button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">

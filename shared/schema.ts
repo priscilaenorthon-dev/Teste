@@ -111,52 +111,67 @@ export const toolsRelations = relations(tools, ({ one, many }) => ({
   loans: many(loans),
 }));
 
-export const insertToolSchema = createInsertSchema(tools).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  availableQuantity: z
-    .number({ invalid_type_error: "Quantidade disponível deve ser um número" })
-    .int("Quantidade disponível deve ser um número inteiro")
-    .min(0, "Quantidade disponível deve ser maior ou igual a 0")
-    .optional(),
-  lastCalibrationDate: z.union([
-    z.string().transform((val) => val ? new Date(val) : null),
-    z.date(),
-    z.null(),
-    z.undefined()
-  ]).optional().nullable(),
-  nextCalibrationDate: z.union([
-    z.string().transform((val) => val ? new Date(val) : null),
-    z.date(),
-    z.null(),
-    z.undefined()
-  ]).optional().nullable(),
-}).superRefine((data, ctx) => {
-  if (
-    typeof data.quantity === "number" &&
-    typeof data.availableQuantity === "number" &&
-    data.availableQuantity > data.quantity
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["availableQuantity"],
-      message: "Quantidade disponível não pode ser maior que a quantidade total.",
-    });
-  }
-});
+const toolSchemaBase = createInsertSchema(tools)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    availableQuantity: z
+      .number({ invalid_type_error: "Quantidade disponível deve ser um número" })
+      .int("Quantidade disponível deve ser um número inteiro")
+      .min(0, "Quantidade disponível deve ser maior ou igual a 0")
+      .optional(),
+    lastCalibrationDate: z
+      .union([
+        z.string().transform((val) => (val ? new Date(val) : null)),
+        z.date(),
+        z.null(),
+        z.undefined(),
+      ])
+      .optional()
+      .nullable(),
+    nextCalibrationDate: z
+      .union([
+        z.string().transform((val) => (val ? new Date(val) : null)),
+        z.date(),
+        z.null(),
+        z.undefined(),
+      ])
+      .optional()
+      .nullable(),
+  });
+
+const applyToolValidation = <T extends z.ZodObject<any>>(schema: T) =>
+  schema.superRefine((data, ctx) => {
+    if (
+      typeof (data as any).quantity === "number" &&
+      typeof (data as any).availableQuantity === "number" &&
+      (data as any).availableQuantity > (data as any).quantity
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["availableQuantity"],
+        message: "Quantidade disponível não pode ser maior que a quantidade total.",
+      });
+    }
+  });
+
+export const insertToolSchema = applyToolValidation(toolSchemaBase);
+export const updateToolSchema = applyToolValidation(toolSchemaBase.partial());
 
 export type InsertTool = z.infer<typeof insertToolSchema>;
 export type Tool = typeof tools.$inferSelect;
+export type UpdateTool = z.infer<typeof updateToolSchema>;
 
 // Loans (Empréstimos)
 export const loans = pgTable("loans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   batchId: varchar("batch_id"), // Groups multiple loans made together
   toolId: varchar("tool_id").notNull().references(() => tools.id),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  operatorId: varchar("operator_id").notNull().references(() => users.id), // Who registered the loan
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  operatorId: varchar("operator_id").references(() => users.id, { onDelete: "set null" }), // Who registered the loan
   quantityLoaned: integer("quantity_loaned").notNull().default(1),
   loanDate: timestamp("loan_date").notNull().defaultNow(),
   expectedReturnDate: timestamp("expected_return_date"),
@@ -188,6 +203,13 @@ export const insertLoanSchema = createInsertSchema(loans).omit({
   createdAt: true,
   loanDate: true,
   status: true,
+}).extend({
+  userId: z
+    .string({ required_error: "Usuário é obrigatório" })
+    .min(1, "Usuário é obrigatório"),
+  operatorId: z
+    .string({ required_error: "Operador é obrigatório" })
+    .min(1, "Operador é obrigatório"),
 });
 
 export type InsertLoan = z.infer<typeof insertLoanSchema>;

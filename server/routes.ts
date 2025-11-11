@@ -4,7 +4,14 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, loadUserFromSession, verifyPassword } from "./auth";
 import { setupAuthRoutes } from "./authRoutes";
 import { logger } from "./logger";
-import { insertToolSchema, insertToolClassSchema, insertToolModelSchema, insertLoanSchema } from "@shared/schema";
+import {
+  insertToolSchema,
+  insertToolClassSchema,
+  insertToolModelSchema,
+  insertLoanSchema,
+  updateToolSchema,
+  type UpdateTool,
+} from "@shared/schema";
 import { addDays } from "date-fns";
 import { z } from "zod";
 
@@ -213,13 +220,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      // Calculate next calibration date if lastCalibrationDate is being updated
-      let updateData = { ...req.body };
-      if (updateData.lastCalibrationDate && updateData.modelId) {
-        const model = await storage.getToolModel(updateData.modelId);
+      const existingTool = await storage.getTool(req.params.id);
+      if (!existingTool) {
+        return res.status(404).json({ message: "Ferramenta não encontrada" });
+      }
+
+      const parsed = updateToolSchema.parse(req.body);
+      const updateData = Object.fromEntries(
+        Object.entries(parsed).filter(([, value]) => value !== undefined),
+      ) as UpdateTool;
+
+      const hasLastCalibrationUpdate = Object.prototype.hasOwnProperty.call(
+        req.body,
+        "lastCalibrationDate",
+      );
+      const hasModelUpdate = Object.prototype.hasOwnProperty.call(req.body, "modelId");
+
+      const modelIdToUse = updateData.modelId ?? existingTool.modelId ?? null;
+
+      if (hasLastCalibrationUpdate) {
+        if (updateData.lastCalibrationDate === null) {
+          updateData.nextCalibrationDate = null;
+        } else if (updateData.lastCalibrationDate && modelIdToUse) {
+          const model = await storage.getToolModel(modelIdToUse);
+          if (model?.requiresCalibration && model.calibrationIntervalDays) {
+            updateData.nextCalibrationDate = addDays(
+              updateData.lastCalibrationDate,
+              model.calibrationIntervalDays,
+            );
+          } else if (model && !model.requiresCalibration) {
+            updateData.nextCalibrationDate = null;
+          }
+        }
+      } else if (hasModelUpdate && modelIdToUse && existingTool.lastCalibrationDate) {
+        const model = await storage.getToolModel(modelIdToUse);
         if (model?.requiresCalibration && model.calibrationIntervalDays) {
-          const lastCal = new Date(updateData.lastCalibrationDate);
-          updateData.nextCalibrationDate = addDays(lastCal, model.calibrationIntervalDays);
+          updateData.nextCalibrationDate = addDays(
+            existingTool.lastCalibrationDate,
+            model.calibrationIntervalDays,
+          );
+        } else if (model && !model.requiresCalibration) {
+          updateData.nextCalibrationDate = null;
         }
       }
 

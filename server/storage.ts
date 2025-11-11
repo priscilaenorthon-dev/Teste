@@ -52,7 +52,7 @@ export interface IStorage {
   deleteTool(id: string): Promise<void>;
 
   // Loan operations
-  getLoans(): Promise<Loan[]>;
+  getLoans(filter?: { userId?: string; status?: Loan["status"] }): Promise<Loan[]>;
   getLoan(id: string): Promise<Loan | undefined>;
   createLoan(data: InsertLoan): Promise<Loan>;
   updateLoan(id: string, data: Partial<InsertLoan>): Promise<Loan | undefined>;
@@ -213,13 +213,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Loan operations
-  async getLoans(): Promise<Loan[]> {
+  async getLoans(filter?: { userId?: string; status?: Loan["status"] }): Promise<Loan[]> {
+    const whereConditions = [] as any[];
+
+    if (filter?.userId) {
+      whereConditions.push(eq(loans.userId, filter.userId));
+    }
+
+    if (filter?.status) {
+      whereConditions.push(eq(loans.status, filter.status));
+    }
+
+    let whereClause: any;
+    for (const condition of whereConditions) {
+      whereClause = whereClause ? and(whereClause, condition) : condition;
+    }
+
     return await db.query.loans.findMany({
       with: {
         tool: true,
         user: true,
         operator: true,
       },
+      where: whereClause,
       orderBy: [desc(loans.loanDate)],
     });
   }
@@ -261,7 +277,39 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getDashboardStats(): Promise<any> {
+  async getDashboardStats(options?: { userId?: string }): Promise<any> {
+    if (options?.userId) {
+      const userActiveLoans = await db.query.loans.findMany({
+        where: and(eq(loans.userId, options.userId), eq(loans.status, "active")),
+        orderBy: [desc(loans.loanDate)],
+        with: {
+          tool: true,
+          user: true,
+        },
+      });
+
+      const totalBorrowedQuantity = userActiveLoans.reduce((sum, loan: any) => sum + (loan.quantityLoaned || 0), 0);
+      const uniqueBorrowedTools = new Set(userActiveLoans.map((loan: any) => loan.toolId)).size;
+
+      const recentLoansFormatted = userActiveLoans.map((loan: any) => ({
+        id: loan.id,
+        toolName: loan.tool?.name || "",
+        toolCode: loan.tool?.code || "",
+        userName: `${loan.user?.firstName || ""} ${loan.user?.lastName || ""}`.trim(),
+        loanDate: loan.loanDate?.toISOString() || "",
+        status: loan.status,
+      }));
+
+      return {
+        totalTools: uniqueBorrowedTools,
+        availableTools: 0,
+        loanedTools: totalBorrowedQuantity,
+        calibrationAlerts: 0,
+        recentLoans: recentLoansFormatted,
+        upcomingCalibrations: [],
+      };
+    }
+
     const allTools = await db.select().from(tools);
     const activeLoans = await this.getActiveLoans();
 

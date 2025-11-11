@@ -9,6 +9,7 @@ import {
   type UpsertUser,
   type Tool,
   type InsertTool,
+  type UpdateTool,
   type ToolClass,
   type InsertToolClass,
   type ToolModel,
@@ -48,7 +49,7 @@ export interface IStorage {
   getTools(): Promise<Tool[]>;
   getTool(id: string): Promise<Tool | undefined>;
   createTool(data: InsertTool): Promise<Tool>;
-  updateTool(id: string, data: Partial<InsertTool>): Promise<Tool | undefined>;
+  updateTool(id: string, data: UpdateTool): Promise<Tool | undefined>;
   deleteTool(id: string): Promise<void>;
 
   // Loan operations
@@ -57,7 +58,7 @@ export interface IStorage {
   createLoan(data: InsertLoan): Promise<Loan>;
   updateLoan(id: string, data: Partial<InsertLoan>): Promise<Loan | undefined>;
   getActiveLoans(): Promise<Loan[]>;
-  getDashboardStats(): Promise<any>;
+  getDashboardStats(options?: { userId?: string }): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -214,19 +215,36 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const [tool] = await db.insert(tools).values(payload).returning();
+    const [tool] = await db
+      .insert(tools)
+      .values(payload as typeof tools.$inferInsert)
+      .returning();
     return await this.getTool(tool.id) as Tool;
   }
 
-  async updateTool(id: string, data: Partial<InsertTool>): Promise<Tool | undefined> {
-    if (data.quantity !== undefined || data.availableQuantity !== undefined) {
+  async updateTool(id: string, data: UpdateTool): Promise<Tool | undefined> {
+    const payload: UpdateTool = { ...data };
+
+    if (typeof payload.lastCalibrationDate === "string") {
+      payload.lastCalibrationDate = payload.lastCalibrationDate
+        ? new Date(payload.lastCalibrationDate)
+        : null;
+    }
+
+    if (typeof payload.nextCalibrationDate === "string") {
+      payload.nextCalibrationDate = payload.nextCalibrationDate
+        ? new Date(payload.nextCalibrationDate)
+        : null;
+    }
+
+    if (payload.quantity !== undefined || payload.availableQuantity !== undefined) {
       const currentTool = await this.getTool(id);
       if (!currentTool) {
         throw new Error("Ferramenta não encontrada");
       }
 
-      const quantity = data.quantity ?? currentTool.quantity;
-      const available = data.availableQuantity ?? currentTool.availableQuantity;
+      const quantity = payload.quantity ?? currentTool.quantity;
+      const available = payload.availableQuantity ?? currentTool.availableQuantity;
 
       if (available > quantity) {
         throw new Error("Quantidade disponível não pode ser maior que a quantidade total.");
@@ -235,7 +253,7 @@ export class DatabaseStorage implements IStorage {
 
     const [tool] = await db
       .update(tools)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...(payload as Partial<typeof tools.$inferInsert>), updatedAt: new Date() })
       .where(eq(tools.id, id))
       .returning();
     if (!tool) return undefined;
@@ -312,81 +330,228 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDashboardStats(options?: { userId?: string }): Promise<any> {
-    if (options?.userId) {
-      const userActiveLoans = await db.query.loans.findMany({
-        where: and(eq(loans.userId, options.userId), eq(loans.status, "active")),
-        orderBy: [desc(loans.loanDate)],
-        with: {
-          tool: true,
-          user: true,
-        },
-      });
-
-      const totalBorrowedQuantity = userActiveLoans.reduce((sum, loan: any) => sum + (loan.quantityLoaned || 0), 0);
-      const uniqueBorrowedTools = new Set(userActiveLoans.map((loan: any) => loan.toolId)).size;
-
-      const recentLoansFormatted = userActiveLoans.map((loan: any) => ({
-        id: loan.id,
-        toolName: loan.tool?.name || "",
-        toolCode: loan.tool?.code || "",
-        userName: `${loan.user?.firstName || ""} ${loan.user?.lastName || ""}`.trim(),
-        loanDate: loan.loanDate?.toISOString() || "",
-        status: loan.status,
-      }));
-
-      return {
-        totalTools: uniqueBorrowedTools,
-        availableTools: 0,
-        loanedTools: totalBorrowedQuantity,
-        calibrationAlerts: 0,
-        recentLoans: recentLoansFormatted,
-        upcomingCalibrations: [],
-      };
-    }
-
-    const allTools = await db.select().from(tools);
-    const activeLoans = await this.getActiveLoans();
-
-    const totalTools = allTools.reduce((sum, tool) => sum + tool.quantity, 0);
-    const availableTools = allTools.reduce((sum, tool) => sum + tool.availableQuantity, 0);
-    const loanedTools = totalTools - availableTools;
-
-    // Get calibration alerts (tools needing calibration within 10 days)
     const now = new Date();
-    const tenDaysFromNow = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
 
-    const calibrationTools = allTools.filter(tool =>
-      tool.nextCalibrationDate &&
-      new Date(tool.nextCalibrationDate) >= now &&
-      new Date(tool.nextCalibrationDate) <= tenDaysFromNow
-    );
+    const toolsData = await db.query.tools.findMany({
+      with: {
+        class: true,
+      },
+    });
 
-    // Recent loans
-    const recentLoans = await db.query.loans.findMany({
-      limit: 10,
+    const loansData = await db.query.loans.findMany({
+      where: options?.userId ? eq(loans.userId, options.userId) : undefined,
       orderBy: [desc(loans.loanDate)],
       with: {
-        tool: true,
+        tool: {
+          with: {
+            class: true,
+          },
+        },
         user: true,
       },
     });
 
-    const recentLoansFormatted = recentLoans.map((loan: any) => ({
+    const totalTools = options?.userId
+      ? new Set(loansData.map((loan) => loan.toolId)).size
+      : toolsData.reduce((sum, tool) => sum + (tool.quantity || 0), 0);
+
+    const availableTools = options?.userId
+      ? 0
+      : toolsData.reduce((sum, tool) => sum + (tool.availableQuantity || 0), 0);
+
+    const loanedTools = options?.userId
+      ? loansData.reduce((sum, loan) => sum + (loan.quantityLoaned || 0), 0)
+      : totalTools - availableTools;
+
+    const toolMap = new Map<string, typeof toolsData[number]>();
+    if (options?.userId) {
+      for (const loan of loansData) {
+        if (loan.tool) {
+          toolMap.set(loan.tool.id, loan.tool as typeof toolsData[number]);
+        }
+      }
+    } else {
+      for (const tool of toolsData) {
+        toolMap.set(tool.id, tool);
+      }
+    }
+
+    const relevantTools = Array.from(toolMap.values());
+    const tenDaysFromNow = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
+    const calibrationTools = relevantTools.filter(
+      (tool) =>
+        tool.nextCalibrationDate &&
+        new Date(tool.nextCalibrationDate) >= now &&
+        new Date(tool.nextCalibrationDate) <= tenDaysFromNow,
+    );
+
+    const recentLoans = loansData.slice(0, 10);
+    const recentLoansFormatted = recentLoans.map((loan) => ({
       id: loan.id,
       toolName: loan.tool?.name || "",
       toolCode: loan.tool?.code || "",
-      userName: `${loan.user?.firstName || ""} ${loan.user?.lastName || ""}`.trim(),
+      userName: `${loan.user?.firstName || ""} ${loan.user?.lastName || ""}`.trim() || "Usuário removido",
       loanDate: loan.loanDate?.toISOString() || "",
       status: loan.status,
     }));
 
-    const upcomingCalibrations = calibrationTools.map(tool => ({
+    const upcomingCalibrations = calibrationTools.map((tool) => ({
       id: tool.id,
       toolName: tool.name,
       toolCode: tool.code,
       dueDate: tool.nextCalibrationDate!.toISOString(),
-      daysRemaining: Math.floor((new Date(tool.nextCalibrationDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      daysRemaining: Math.max(
+        0,
+        Math.floor((new Date(tool.nextCalibrationDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      ),
     }));
+
+    const usageByDepartmentMap = new Map<
+      string,
+      { department: string; totalLoans: number; activeLoans: number }
+    >();
+    const usageByClassMap = new Map<
+      string,
+      { className: string; totalLoans: number; activeLoans: number }
+    >();
+
+    const topToolsMap = new Map<
+      string,
+      { toolId: string; toolName: string; toolCode: string; usageCount: number; lastLoanDate: string | null }
+    >();
+
+    for (const loan of loansData) {
+      const quantity = loan.quantityLoaned || 0;
+      const department = loan.user?.department?.trim() || "Não informado";
+      const departmentEntry = usageByDepartmentMap.get(department) || {
+        department,
+        totalLoans: 0,
+        activeLoans: 0,
+      };
+      departmentEntry.totalLoans += quantity;
+      if (loan.status === "active" || loan.status === "overdue") {
+        departmentEntry.activeLoans += quantity;
+      }
+      usageByDepartmentMap.set(department, departmentEntry);
+
+      const className = loan.tool?.class?.name || "Outros";
+      const classEntry = usageByClassMap.get(className) || {
+        className,
+        totalLoans: 0,
+        activeLoans: 0,
+      };
+      classEntry.totalLoans += quantity;
+      if (loan.status === "active" || loan.status === "overdue") {
+        classEntry.activeLoans += quantity;
+      }
+      usageByClassMap.set(className, classEntry);
+
+      if (loan.tool) {
+        const existingTool = topToolsMap.get(loan.toolId) || {
+          toolId: loan.toolId,
+          toolName: loan.tool.name,
+          toolCode: loan.tool.code,
+          usageCount: 0,
+          lastLoanDate: null as string | null,
+        };
+        existingTool.usageCount += quantity;
+        if (loan.loanDate) {
+          const isoDate = loan.loanDate.toISOString();
+          if (!existingTool.lastLoanDate || new Date(isoDate) > new Date(existingTool.lastLoanDate)) {
+            existingTool.lastLoanDate = isoDate;
+          }
+        }
+        topToolsMap.set(loan.toolId, existingTool);
+      }
+    }
+
+    const usageByDepartment = Array.from(usageByDepartmentMap.values())
+      .sort((a, b) => b.totalLoans - a.totalLoans)
+      .slice(0, 8);
+
+    const usageByClass = Array.from(usageByClassMap.values())
+      .sort((a, b) => b.totalLoans - a.totalLoans)
+      .slice(0, 8);
+
+    const topTools = Array.from(topToolsMap.values())
+      .sort((a, b) => b.usageCount - a.usageCount)
+      .slice(0, 5);
+
+    const periods: { key: string; label: string; loans: number; returns: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const periodDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${periodDate.getFullYear()}-${periodDate.getMonth()}`;
+      const monthLabel = periodDate
+        .toLocaleString("pt-BR", { month: "short" })
+        .replace(".", "");
+      const label = `${monthLabel.charAt(0).toUpperCase()}${monthLabel.slice(1)}/${periodDate.getFullYear()}`;
+      periods.push({ key, label, loans: 0, returns: 0 });
+    }
+
+    const usageOverTimeMap = new Map(periods.map((period) => [period.key, period]));
+
+    for (const loan of loansData) {
+      if (loan.loanDate) {
+        const loanDate = loan.loanDate;
+        const key = `${loanDate.getFullYear()}-${loanDate.getMonth()}`;
+        const entry = usageOverTimeMap.get(key);
+        if (entry) {
+          entry.loans += loan.quantityLoaned || 0;
+        }
+      }
+
+      if (loan.returnDate) {
+        const returnDate = loan.returnDate;
+        const key = `${returnDate.getFullYear()}-${returnDate.getMonth()}`;
+        const entry = usageOverTimeMap.get(key);
+        if (entry) {
+          entry.returns += loan.quantityLoaned || 0;
+        }
+      }
+    }
+
+    const usageOverTime = Array.from(usageOverTimeMap.values());
+
+    const lowAvailabilityTools = options?.userId
+      ? []
+      : toolsData
+          .filter((tool) => {
+            if (!tool.quantity) return false;
+            const ratio = tool.availableQuantity / tool.quantity;
+            return tool.availableQuantity <= 1 || ratio <= 0.2;
+          })
+          .map((tool) => ({
+            toolId: tool.id,
+            toolName: tool.name,
+            toolCode: tool.code,
+            available: tool.availableQuantity,
+            total: tool.quantity,
+          }))
+          .sort((a, b) => a.available / a.total - b.available / b.total)
+          .slice(0, 5);
+
+    const overdueLoans = loansData
+      .filter((loan) => {
+        if (loan.status === "returned") return false;
+        if (loan.status === "overdue") return true;
+        if (!loan.expectedReturnDate) return false;
+        return loan.expectedReturnDate < now && !loan.returnDate;
+      })
+      .map((loan) => {
+        const dueDate = loan.expectedReturnDate;
+        const daysOverdue = dueDate
+          ? Math.max(0, Math.ceil((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)))
+          : 0;
+        return {
+          loanId: loan.id,
+          toolName: loan.tool?.name || "",
+          toolCode: loan.tool?.code || "",
+          userName: `${loan.user?.firstName || ""} ${loan.user?.lastName || ""}`.trim() || "Usuário removido",
+          daysOverdue,
+        };
+      })
+      .sort((a, b) => b.daysOverdue - a.daysOverdue)
+      .slice(0, 5);
 
     return {
       totalTools,
@@ -395,6 +560,12 @@ export class DatabaseStorage implements IStorage {
       calibrationAlerts: calibrationTools.length,
       recentLoans: recentLoansFormatted,
       upcomingCalibrations,
+      usageByDepartment,
+      usageByClass,
+      usageOverTime,
+      topTools,
+      lowAvailabilityTools,
+      overdueLoans,
     };
   }
 }

@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, loadUserFromSession, verifyPassword } from "./auth";
 import { setupAuthRoutes } from "./authRoutes";
+import { logger } from "./logger";
 import { insertToolSchema, insertToolClassSchema, insertToolModelSchema, insertLoanSchema } from "@shared/schema";
 import { addDays } from "date-fns";
 import { z } from "zod";
@@ -43,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getDashboardStats();
       res.json(stats);
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
+      logger.error({ err: error, route: "/api/dashboard/stats" }, "Error fetching dashboard stats");
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
@@ -54,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const classes = await storage.getToolClasses();
       res.json(classes);
     } catch (error) {
-      console.error("Error fetching classes:", error);
+      logger.error({ err: error, route: "/api/classes" }, "Error fetching classes");
       res.status(500).json({ message: "Failed to fetch classes" });
     }
   });
@@ -70,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toolClass = await storage.createToolClass(validated);
       res.json(toolClass);
     } catch (error: any) {
-      console.error("Error creating class:", error);
+      logger.error({ err: error, route: "/api/classes", action: "create" }, "Error creating class");
       res.status(400).json({ message: error.message || "Failed to create class" });
     }
   });
@@ -85,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toolClass = await storage.updateToolClass(req.params.id, req.body);
       res.json(toolClass);
     } catch (error: any) {
-      console.error("Error updating class:", error);
+      logger.error({ err: error, route: "/api/classes/:id", action: "update" }, "Error updating class");
       res.status(400).json({ message: error.message || "Failed to update class" });
     }
   });
@@ -100,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteToolClass(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Error deleting class:", error);
+      logger.error({ err: error, route: "/api/classes/:id", action: "delete" }, "Error deleting class");
       res.status(400).json({ message: error.message || "Failed to delete class" });
     }
   });
@@ -111,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const models = await storage.getToolModels();
       res.json(models);
     } catch (error) {
-      console.error("Error fetching models:", error);
+      logger.error({ err: error, route: "/api/models" }, "Error fetching models");
       res.status(500).json({ message: "Failed to fetch models" });
     }
   });
@@ -127,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toolModel = await storage.createToolModel(validated);
       res.json(toolModel);
     } catch (error: any) {
-      console.error("Error creating model:", error);
+      logger.error({ err: error, route: "/api/models", action: "create" }, "Error creating model");
       res.status(400).json({ message: error.message || "Failed to create model" });
     }
   });
@@ -142,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const toolModel = await storage.updateToolModel(req.params.id, req.body);
       res.json(toolModel);
     } catch (error: any) {
-      console.error("Error updating model:", error);
+      logger.error({ err: error, route: "/api/models/:id", action: "update" }, "Error updating model");
       res.status(400).json({ message: error.message || "Failed to update model" });
     }
   });
@@ -157,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteToolModel(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Error deleting model:", error);
+      logger.error({ err: error, route: "/api/models/:id", action: "delete" }, "Error deleting model");
       res.status(400).json({ message: error.message || "Failed to delete model" });
     }
   });
@@ -168,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tools = await storage.getTools();
       res.json(tools);
     } catch (error) {
-      console.error("Error fetching tools:", error);
+      logger.error({ err: error, route: "/api/tools" }, "Error fetching tools");
       res.status(500).json({ message: "Failed to fetch tools" });
     }
   });
@@ -198,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } as any);
       res.json(tool);
     } catch (error: any) {
-      console.error("Error creating tool:", error);
+      logger.error({ err: error, route: "/api/tools", action: "create" }, "Error creating tool");
       res.status(400).json({ message: error.message || "Failed to create tool" });
     }
   });
@@ -223,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tool = await storage.updateTool(req.params.id, updateData);
       res.json(tool);
     } catch (error: any) {
-      console.error("Error updating tool:", error);
+      logger.error({ err: error, route: "/api/tools/:id", action: "update" }, "Error updating tool");
       res.status(400).json({ message: error.message || "Failed to update tool" });
     }
   });
@@ -238,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteTool(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Error deleting tool:", error);
+      logger.error({ err: error, route: "/api/tools/:id", action: "delete" }, "Error deleting tool");
       res.status(400).json({ message: error.message || "Failed to delete tool" });
     }
   });
@@ -249,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loans = await storage.getLoans();
       res.json(loans);
     } catch (error) {
-      console.error("Error fetching loans:", error);
+      logger.error({ err: error, route: "/api/loans" }, "Error fetching loans");
       res.status(500).json({ message: "Failed to fetch loans" });
     }
   });
@@ -348,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ loans: createdLoans, batchId });
     } catch (error: any) {
-      console.error("Error creating loans:", error);
+      logger.error({ err: error, route: "/api/loans", action: "create" }, "Error creating loans");
       res.status(400).json({ message: error.message || "Failed to create loans" });
     }
   });
@@ -382,7 +383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Error returning loan:", error);
+      logger.error({ err: error, route: "/api/loans/:id/return", action: "return" }, "Error returning loan");
       res.status(400).json({ message: error.message || "Failed to return loan" });
     }
   });
@@ -393,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      logger.error({ err: error, route: "/api/users" }, "Error fetching users");
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
@@ -408,7 +409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.updateUser(req.params.id, req.body);
       res.json(user);
     } catch (error: any) {
-      console.error("Error updating user:", error);
+      logger.error({ err: error, route: "/api/users/:id", action: "update" }, "Error updating user");
       res.status(400).json({ message: error.message || "Failed to update user" });
     }
   });
@@ -423,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteUser(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Error deleting user:", error);
+      logger.error({ err: error, route: "/api/users/:id", action: "delete" }, "Error deleting user");
       res.status(400).json({ message: error.message || "Failed to delete user" });
     }
   });

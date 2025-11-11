@@ -19,6 +19,7 @@ import Users from "@/pages/users";
 import Classes from "@/pages/classes";
 import Models from "@/pages/models";
 import ImprovementIdeas from "@/pages/improvement-ideas";
+import AuditPage from "@/pages/audit";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -69,6 +70,7 @@ function AppContent() {
                 <Route path="/inventory" component={Inventory} />
                 <Route path="/calibration" component={Calibration} />
                 <Route path="/reports" component={Reports} />
+                <Route path="/audit" component={AuditPage} />
                 <Route path="/users" component={Users} />
                 <Route path="/classes" component={Classes} />
                 <Route path="/models" component={Models} />

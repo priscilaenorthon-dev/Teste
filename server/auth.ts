@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
+import type { UserRole } from "@shared/schema";
 
 const SALT_ROUNDS = 10;
 
@@ -12,7 +13,10 @@ declare global {
       user?: {
         id: string;
         username: string;
-        role: string;
+        role: UserRole;
+        firstName?: string;
+        lastName?: string;
+        email?: string | null;
       };
     }
   }
@@ -57,20 +61,21 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
   }
 }
 
+export function authorizeRoles(...roles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (req.user && roles.includes(req.user.role)) {
+      return next();
+    }
+    res.status(403).json({ message: "Forbidden" });
+  };
+}
+
 export function isAdmin(req: Request, res: Response, next: NextFunction) {
-  if (req.user && req.user.role === "admin") {
-    next();
-  } else {
-    res.status(403).json({ message: "Forbidden: Admin access required" });
-  }
+  return authorizeRoles("admin")(req, res, next);
 }
 
 export function isOperatorOrAdmin(req: Request, res: Response, next: NextFunction) {
-  if (req.user && (req.user.role === "admin" || req.user.role === "operator")) {
-    next();
-  } else {
-    res.status(403).json({ message: "Forbidden: Operator or Admin access required" });
-  }
+  return authorizeRoles("admin", "operator")(req, res, next);
 }
 
 // Middleware to load user from session
@@ -82,7 +87,10 @@ export async function loadUserFromSession(req: Request, res: Response, next: Nex
         req.user = {
           id: user.id,
           username: user.username,
-          role: user.role,
+          role: (user.role as UserRole) ?? "user",
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
         };
       }
     } catch (error) {

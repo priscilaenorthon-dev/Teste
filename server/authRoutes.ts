@@ -2,8 +2,9 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, type User } from "@shared/schema";
 import { nanoid } from "nanoid";
+import { logger } from "./logger";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username é obrigatório"),
@@ -13,6 +14,32 @@ const loginSchema = z.object({
 const registerSchema = insertUserSchema.extend({
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
 });
+
+function formatUserDisplayName(
+  user?: Partial<Pick<User, "firstName" | "lastName" | "username">> | null,
+) {
+  if (!user) {
+    return "Usuário desconhecido";
+  }
+  const parts = [user.firstName?.trim() || "", user.lastName?.trim() || ""].filter(Boolean);
+  if (parts.length) {
+    return parts.join(" ");
+  }
+  return user.username || "Usuário desconhecido";
+}
+
+function buildUserAuditData(user: User) {
+  return {
+    id: user.id,
+    username: user.username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    department: user.department,
+    matriculation: user.matriculation,
+    role: user.role,
+  } as Record<string, unknown>;
+}
 
 export function setupAuthRoutes(app: Express) {
   // Login route
@@ -45,13 +72,11 @@ export function setupAuthRoutes(app: Express) {
   // Register route (admin only)
   app.post('/api/auth/register', async (req: Request, res: Response) => {
     try {
-      // Check if user is logged in and is admin
-      if (!(req.session as any).userId) {
+      if (!req.user) {
         return res.status(401).json({ message: "Não autorizado" });
       }
 
-      const currentUser = await storage.getUser((req.session as any).userId);
-      if (!currentUser || currentUser.role !== 'admin') {
+      if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Apenas administradores podem registrar usuários" });
       }
 
@@ -75,6 +100,19 @@ export function setupAuthRoutes(app: Express) {
         password: hashedPassword,
         qrCode,
       });
+
+      try {
+        await storage.createAuditLog({
+          userId: req.user.id,
+          targetType: "user",
+          targetId: newUser.id,
+          action: "create",
+          description: `Usuário ${formatUserDisplayName(req.user)} criou o usuário ${formatUserDisplayName(newUser)}.`,
+          afterData: buildUserAuditData(newUser),
+        });
+      } catch (error) {
+        logger.error({ err: error, route: "/api/auth/register" }, "Failed to log user creation");
+      }
 
       // Return user without password
       const { password: _, ...userWithoutPassword } = newUser;

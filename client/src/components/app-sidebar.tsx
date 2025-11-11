@@ -63,6 +63,12 @@ export function AppSidebar() {
       roles: ["operator", "admin"],
     },
     {
+      title: "Histórico e Auditoria",
+      icon: "history",
+      url: "/audit",
+      roles: ["admin"],
+    },
+    {
       title: "Usuários",
       icon: "people",
       url: "/users",

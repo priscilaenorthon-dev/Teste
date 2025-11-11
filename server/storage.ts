@@ -5,6 +5,7 @@ import {
   toolModels,
   loans,
   calibrationAlerts,
+  auditLogs,
   type User,
   type UpsertUser,
   type Tool,
@@ -16,9 +17,18 @@ import {
   type InsertToolModel,
   type Loan,
   type InsertLoan,
+  type AuditLog,
+  type InsertAuditLog,
+  type AuditLogWithActor,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+
+export type AuditLogFilter = {
+  targetType?: AuditLog["targetType"];
+  targetId?: string;
+  userId?: string;
+};
 
 export interface IStorage {
   // User operations
@@ -59,6 +69,10 @@ export interface IStorage {
   updateLoan(id: string, data: Partial<InsertLoan>): Promise<Loan | undefined>;
   getActiveLoans(): Promise<Loan[]>;
   getDashboardStats(options?: { userId?: string }): Promise<any>;
+
+  // Audit log operations
+  createAuditLog(entry: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(filter?: AuditLogFilter): Promise<AuditLogWithActor[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -567,6 +581,51 @@ export class DatabaseStorage implements IStorage {
       lowAvailabilityTools,
       overdueLoans,
     };
+  }
+
+  async createAuditLog(entry: InsertAuditLog): Promise<AuditLog> {
+    const [log] = await db
+      .insert(auditLogs)
+      .values({ ...entry, createdAt: entry.createdAt ?? new Date() })
+      .returning();
+    return log;
+  }
+
+  async getAuditLogs(filter?: AuditLogFilter): Promise<AuditLogWithActor[]> {
+    const conditions = [] as any[];
+
+    if (filter?.targetType) {
+      conditions.push(eq(auditLogs.targetType, filter.targetType));
+    }
+
+    if (filter?.targetId) {
+      conditions.push(eq(auditLogs.targetId, filter.targetId));
+    }
+
+    if (filter?.userId) {
+      conditions.push(eq(auditLogs.userId, filter.userId));
+    }
+
+    let whereClause: any;
+    for (const condition of conditions) {
+      whereClause = whereClause ? and(whereClause, condition) : condition;
+    }
+
+    return await db.query.auditLogs.findMany({
+      where: whereClause,
+      with: {
+        actor: {
+          columns: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [desc(auditLogs.createdAt)],
+    });
   }
 }
 

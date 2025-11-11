@@ -40,6 +40,8 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export type UserRole = "admin" | "operator" | "user";
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -49,6 +51,25 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export type UpsertUser = typeof users.$inferInsert;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export type AuditAction = "create" | "update" | "delete" | "move";
+export type AuditTargetType = "tool" | "toolClass" | "toolModel" | "user";
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  targetType: varchar("target_type").$type<AuditTargetType>().notNull(),
+  targetId: varchar("target_id").notNull(),
+  action: varchar("action").$type<AuditAction>().notNull(),
+  description: text("description").notNull(),
+  beforeData: jsonb("before_data").$type<Record<string, unknown> | null>(),
+  afterData: jsonb("after_data").$type<Record<string, unknown> | null>(),
+  metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
 
 // Tool Classes (e.g., Chaves, Micrômetros, Paquímetros, Alicates)
 export const toolClasses = pgTable("tool_classes", {
@@ -255,3 +276,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   loansAsUser: many(loans, { relationName: "userLoans" }),
   loansAsOperator: many(loans, { relationName: "operatorLoans" }),
 }));
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  actor: one(users, {
+    fields: [auditLogs.userId],
+    references: [users.id],
+  }),
+}));
+
+export type AuditLogWithActor = AuditLog & {
+  actor?: Pick<User, "id" | "username" | "firstName" | "lastName" | "role"> | null;
+};

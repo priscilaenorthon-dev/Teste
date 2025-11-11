@@ -41,15 +41,28 @@ import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const toolFormSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  code: z.string().min(1, "Código é obrigatório"),
-  classId: z.string().min(1, "Classe é obrigatória"),
-  modelId: z.string().min(1, "Modelo é obrigatório"),
-  quantity: z.number().min(1, "Quantidade deve ser maior que 0"),
-  status: z.string(),
-  lastCalibrationDate: z.date().optional().nullable(),
-});
+const toolFormSchema = z
+  .object({
+    name: z.string().min(1, "Nome é obrigatório"),
+    code: z.string().min(1, "Código é obrigatório"),
+    classId: z.string().min(1, "Classe é obrigatória"),
+    modelId: z.string().min(1, "Modelo é obrigatório"),
+    quantity: z.number().min(1, "Quantidade deve ser maior que 0"),
+    availableQuantity: z
+      .number()
+      .min(0, "Quantidade disponível deve ser maior ou igual a 0"),
+    status: z.string(),
+    lastCalibrationDate: z.date().optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.availableQuantity > data.quantity) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["availableQuantity"],
+        message: "Quantidade disponível não pode ser maior que a quantidade total.",
+      });
+    }
+  });
 
 type ToolFormData = z.infer<typeof toolFormSchema>;
 
@@ -81,6 +94,7 @@ export default function Tools() {
       classId: "",
       modelId: "",
       quantity: 1,
+      availableQuantity: 1,
       status: "available",
       lastCalibrationDate: null,
     },
@@ -166,6 +180,7 @@ export default function Tools() {
       classId: tool.classId || "",
       modelId: tool.modelId || "",
       quantity: tool.quantity,
+      availableQuantity: tool.availableQuantity,
       status: tool.status,
       lastCalibrationDate: tool.lastCalibrationDate ? new Date(tool.lastCalibrationDate) : null,
     });
@@ -309,7 +324,7 @@ export default function Tools() {
                     />
                   </div>
 
-                  <div className="grid lg:grid-cols-2 gap-4">
+                  <div className="grid gap-4 lg:grid-cols-3">
                     <FormField
                       control={form.control}
                       name="quantity"
@@ -321,8 +336,42 @@ export default function Tools() {
                               type="number"
                               min="1"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                              onChange={(e) => {
+                                const previousQuantity = form.getValues("quantity");
+                                const value = parseInt(e.target.value) || 1;
+                                field.onChange(value);
+                                const currentAvailable = form.getValues("availableQuantity");
+                                if (currentAvailable > value) {
+                                  form.setValue("availableQuantity", value);
+                                } else if (currentAvailable === previousQuantity) {
+                                  form.setValue("availableQuantity", value);
+                                }
+                              }}
                               data-testid="input-tool-quantity"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="availableQuantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Disponível *</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              max={form.getValues("quantity")}
+                              {...field}
+                              onChange={(e) => {
+                                const quantity = form.getValues("quantity");
+                                const value = Math.max(0, parseInt(e.target.value) || 0);
+                                field.onChange(Math.min(value, quantity));
+                              }}
+                              data-testid="input-tool-available"
                             />
                           </FormControl>
                           <FormMessage />

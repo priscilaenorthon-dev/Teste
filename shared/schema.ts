@@ -115,8 +115,12 @@ export const insertToolSchema = createInsertSchema(tools).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-  availableQuantity: true,
 }).extend({
+  availableQuantity: z
+    .number({ invalid_type_error: "Quantidade disponível deve ser um número" })
+    .int("Quantidade disponível deve ser um número inteiro")
+    .min(0, "Quantidade disponível deve ser maior ou igual a 0")
+    .optional(),
   lastCalibrationDate: z.union([
     z.string().transform((val) => val ? new Date(val) : null),
     z.date(),
@@ -129,6 +133,18 @@ export const insertToolSchema = createInsertSchema(tools).omit({
     z.null(),
     z.undefined()
   ]).optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (
+    typeof data.quantity === "number" &&
+    typeof data.availableQuantity === "number" &&
+    data.availableQuantity > data.quantity
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["availableQuantity"],
+      message: "Quantidade disponível não pode ser maior que a quantidade total.",
+    });
+  }
 });
 
 export type InsertTool = z.infer<typeof insertToolSchema>;

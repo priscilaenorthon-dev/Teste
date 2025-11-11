@@ -143,7 +143,19 @@ export function AppSidebar() {
           size="sm"
           className="w-full"
           data-testid="button-logout"
-          onClick={() => window.location.href = "/api/logout"}
+          onClick={async () => {
+            try {
+              const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include',
+              });
+              if (response.ok) {
+                window.location.href = "/auth/login";
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+            }
+          }}
         >
           <span className="material-icons text-sm mr-2">logout</span>
           Sair

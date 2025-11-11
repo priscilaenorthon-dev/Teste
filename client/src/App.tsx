@@ -18,6 +18,7 @@ import Reports from "@/pages/reports";
 import Users from "@/pages/users";
 import Classes from "@/pages/classes";
 import Models from "@/pages/models";
+import ImprovementIdeas from "@/pages/improvement-ideas";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,6 +72,7 @@ function AppContent() {
                 <Route path="/users" component={Users} />
                 <Route path="/classes" component={Classes} />
                 <Route path="/models" component={Models} />
+                <Route path="/improvement-ideas" component={ImprovementIdeas} />
                 <Route component={NotFound} />
               </Switch>
             </main>

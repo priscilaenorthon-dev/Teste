@@ -41,7 +41,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
   app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const stats = await storage.getDashboardStats(
+        req.user?.role === 'user' ? { userId: req.user.id } : undefined
+      );
       res.json(stats);
     } catch (error) {
       logger.error({ err: error, route: "/api/dashboard/stats" }, "Error fetching dashboard stats");
@@ -247,7 +249,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Loans routes
   app.get('/api/loans', isAuthenticated, async (req, res) => {
     try {
-      const loans = await storage.getLoans();
+      const loans = await storage.getLoans(
+        req.user?.role === 'user'
+          ? { userId: req.user.id, status: 'active' }
+          : undefined
+      );
       res.json(loans);
     } catch (error) {
       logger.error({ err: error, route: "/api/loans" }, "Error fetching loans");

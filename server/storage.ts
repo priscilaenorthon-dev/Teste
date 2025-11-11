@@ -170,6 +170,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteToolModel(id: string): Promise<void> {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tools)
+      .where(eq(tools.modelId, id));
+
+    if (count > 0) {
+      throw new Error("Não é possível excluir um modelo vinculado a ferramentas cadastradas.");
+    }
+
     await db.delete(toolModels).where(eq(toolModels.id, id));
   }
 
@@ -194,11 +203,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTool(data: InsertTool): Promise<Tool> {
-    const [tool] = await db.insert(tools).values(data).returning();
+    const payload: InsertTool = {
+      ...data,
+      availableQuantity: data.availableQuantity ?? data.quantity ?? 0,
+    };
+
+    if (typeof payload.quantity === "number" && typeof payload.availableQuantity === "number") {
+      if (payload.availableQuantity > payload.quantity) {
+        throw new Error("Quantidade disponível não pode ser maior que a quantidade total.");
+      }
+    }
+
+    const [tool] = await db.insert(tools).values(payload).returning();
     return await this.getTool(tool.id) as Tool;
   }
 
   async updateTool(id: string, data: Partial<InsertTool>): Promise<Tool | undefined> {
+    if (data.quantity !== undefined || data.availableQuantity !== undefined) {
+      const currentTool = await this.getTool(id);
+      if (!currentTool) {
+        throw new Error("Ferramenta não encontrada");
+      }
+
+      const quantity = data.quantity ?? currentTool.quantity;
+      const available = data.availableQuantity ?? currentTool.availableQuantity;
+
+      if (available > quantity) {
+        throw new Error("Quantidade disponível não pode ser maior que a quantidade total.");
+      }
+    }
+
     const [tool] = await db
       .update(tools)
       .set({ ...data, updatedAt: new Date() })

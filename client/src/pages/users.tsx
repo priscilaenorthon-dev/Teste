@@ -60,7 +60,7 @@ type UserEditFormData = z.infer<typeof userEditFormSchema>;
 type UserCreateFormData = z.infer<typeof userCreateFormSchema>;
 
 export default function Users() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user: currentUser } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -460,6 +460,10 @@ export default function Users() {
                     ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
                     : user.email?.[0]?.toUpperCase() || "U";
 
+                  const isCurrentUser = currentUser?.id === user.id;
+                  const isDeleting = deleteMutation.isPending && deleteMutation.variables === user.id;
+                  const disableDelete = isCurrentUser || isDeleting;
+
                   return (
                     <TableRow key={user.id} data-testid={`user-row-${user.id}`}>
                       <TableCell>
@@ -593,6 +597,20 @@ export default function Users() {
                               </Form>
                             </DialogContent>
                           </Dialog>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={disableDelete}
+                            onClick={() => {
+                              if (disableDelete) return;
+                              if (confirm("Tem certeza que deseja excluir este usuário?")) {
+                                deleteMutation.mutate(user.id);
+                              }
+                            }}
+                            data-testid={`button-delete-${user.id}`}
+                          >
+                            <span className="material-icons text-sm">delete</span>
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

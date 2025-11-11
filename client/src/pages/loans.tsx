@@ -531,7 +531,7 @@ export default function Loans() {
               Novo Empréstimo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {step === 1 ? "Registrar Empréstimo - Etapa 1" : "Confirmar Recebimento - Etapa 2"}
@@ -592,10 +592,13 @@ export default function Loans() {
                       <div className="flex flex-col gap-2 lg:flex-row">
                         <div className="flex-1 space-y-2">
                           <Select value={currentTool} onValueChange={setCurrentTool}>
-                            <SelectTrigger data-testid="select-loan-tool">
+                            <SelectTrigger
+                              className="items-start text-left [&>span]:whitespace-normal [&>span]:text-left min-h-[4.5rem]"
+                              data-testid="select-loan-tool"
+                            >
                               <SelectValue placeholder={filteredTools.length ? "Selecione a ferramenta" : "Nenhuma ferramenta encontrada"} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-80 sm:min-w-[28rem]">
                               {filteredTools.length ? (
                                 filteredTools.map((tool) => (
                                   <SelectItem key={tool.id} value={tool.id}>
@@ -643,6 +646,23 @@ export default function Loans() {
                           <span className="material-icons text-sm">add</span>
                         </Button>
                       </div>
+
+                      {currentToolData && (
+                        <div className="rounded-md border bg-background/80 p-3 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                              {currentToolData.code}
+                            </code>
+                            <span className="font-medium">{currentToolData.name}</span>
+                            {renderStatusBadge(currentToolData.status, toolStatusConfig)}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <span>Quantidade total: {currentToolData.quantity}</span>
+                            <span>Disponível: {currentToolData.availableQuantity}</span>
+                            {renderCalibrationBadge(currentToolData)}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

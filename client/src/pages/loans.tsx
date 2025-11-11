@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -261,6 +261,7 @@ export default function Loans() {
   const [authMethod, setAuthMethod] = useState<"manual" | "qrcode">("manual");
   const [isScanning, setIsScanning] = useState(false);
   const [qrValidatedUser, setQrValidatedUser] = useState<User | null>(null);
+  const [toolSearchTerm, setToolSearchTerm] = useState("");
 
   const { data: tools } = useQuery<Tool[]>({
     queryKey: ["/api/tools"],
@@ -327,6 +328,14 @@ export default function Loans() {
   });
 
   const availableTools = tools?.filter(t => t.availableQuantity > 0) || [];
+  const filteredTools = availableTools.filter((tool) => {
+    if (!toolSearchTerm.trim()) return true;
+    const normalizedTerm = toolSearchTerm.toLowerCase();
+    return (
+      tool.name.toLowerCase().includes(normalizedTerm) ||
+      tool.code.toLowerCase().includes(normalizedTerm)
+    );
+  });
   const currentToolData = tools?.find(t => t.id === currentTool);
   const selectedUserData = users?.find(u => u.id === selectedUser);
   const loanList = loans || [];
@@ -487,6 +496,12 @@ export default function Loans() {
     });
   };
 
+  useEffect(() => {
+    if (currentTool && !filteredTools.some(tool => tool.id === currentTool)) {
+      setCurrentTool("");
+    }
+  }, [currentTool, filteredTools]);
+
   if (!isOperator) {
     return (
       <div className="p-6">
@@ -554,54 +569,81 @@ export default function Loans() {
                 <Separator />
 
                 <div className="space-y-3">
-                  <Label>Adicionar Ferramentas</Label>
-                  
-                  <div className="flex gap-2">
-                    <div className="flex-1 space-y-2">
-                      <Select value={currentTool} onValueChange={setCurrentTool}>
-                        <SelectTrigger data-testid="select-loan-tool">
-                          <SelectValue placeholder="Selecione a ferramenta" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableTools.map((tool) => (
-                            <SelectItem key={tool.id} value={tool.id}>
-                              <div className="flex flex-col gap-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <code className="text-xs font-mono">{tool.code}</code>
-                                  <span className="font-medium">{tool.name}</span>
-                                  {renderStatusBadge(tool.status, toolStatusConfig)}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                  {renderAvailabilityBadge(tool)}
-                                  {renderCalibrationBadge(tool)}
-                                </div>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <Label className="text-base font-semibold">Adicionar Ferramentas</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {toolSearchTerm ? `${filteredTools.length} resultado${filteredTools.length === 1 ? "" : "s"} encontrado${filteredTools.length === 1 ? "" : "s"}` : `${availableTools.length} ferramentas disponíveis`}
+                    </span>
+                  </div>
 
-                    <div className="w-24 space-y-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        max={currentToolData?.availableQuantity || 1}
-                        value={currentQuantity}
-                        onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 1)}
-                        placeholder="Qtd"
-                        data-testid="input-loan-quantity"
-                      />
-                    </div>
+                  <div className="rounded-lg border border-dashed bg-muted/40 p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="relative">
+                        <span className="material-icons pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground">search</span>
+                        <Input
+                          value={toolSearchTerm}
+                          onChange={(event) => setToolSearchTerm(event.target.value)}
+                          placeholder="Busque por código ou nome da ferramenta"
+                          className="pl-10"
+                          data-testid="input-tool-search"
+                        />
+                      </div>
 
-                    <Button
-                      type="button"
-                      onClick={handleAddTool}
-                      disabled={!currentTool}
-                      data-testid="button-add-tool"
-                    >
-                      <span className="material-icons text-sm">add</span>
-                    </Button>
+                      <div className="flex flex-col gap-2 lg:flex-row">
+                        <div className="flex-1 space-y-2">
+                          <Select value={currentTool} onValueChange={setCurrentTool}>
+                            <SelectTrigger data-testid="select-loan-tool">
+                              <SelectValue placeholder={filteredTools.length ? "Selecione a ferramenta" : "Nenhuma ferramenta encontrada"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {filteredTools.length ? (
+                                filteredTools.map((tool) => (
+                                  <SelectItem key={tool.id} value={tool.id}>
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <code className="text-xs font-mono">{tool.code}</code>
+                                        <span className="font-medium">{tool.name}</span>
+                                        {renderStatusBadge(tool.status, toolStatusConfig)}
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                        {renderAvailabilityBadge(tool)}
+                                        {renderCalibrationBadge(tool)}
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                  Nenhuma ferramenta corresponde à busca. Ajuste os termos ou limpe o filtro.
+                                </div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="w-full space-y-2 lg:w-28">
+                          <Input
+                            type="number"
+                            min="1"
+                            max={currentToolData?.availableQuantity || 1}
+                            value={currentQuantity}
+                            onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 1)}
+                            placeholder="Qtd"
+                            data-testid="input-loan-quantity"
+                          />
+                        </div>
+
+                        <Button
+                          type="button"
+                          onClick={handleAddTool}
+                          disabled={!currentTool}
+                          data-testid="button-add-tool"
+                          className="lg:self-end"
+                        >
+                          <span className="material-icons text-sm">add</span>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

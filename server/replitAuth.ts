@@ -55,10 +55,14 @@ async function upsertUser(
 ) {
   await storage.upsertUser({
     id: claims["sub"],
+    username:
+      claims["preferred_username"] ||
+      claims["email"] ||
+      claims["sub"],
+    password: claims["sub"],
     email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    firstName: claims["first_name"] || claims["name"] || "Usuário",
+    lastName: claims["last_name"] || "",
   });
 }
 

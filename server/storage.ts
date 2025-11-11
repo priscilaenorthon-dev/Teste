@@ -17,7 +17,8 @@ import {
   type InsertLoan,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, isNotNull } from "drizzle-orm";
+import { subDays, startOfDay, format } from "date-fns";
 
 export interface IStorage {
   // User operations
@@ -268,16 +269,56 @@ export class DatabaseStorage implements IStorage {
     const totalTools = allTools.reduce((sum, tool) => sum + tool.quantity, 0);
     const availableTools = allTools.reduce((sum, tool) => sum + tool.availableQuantity, 0);
     const loanedTools = totalTools - availableTools;
+    const availabilityRate =
+      totalTools > 0 ? Math.round((availableTools / totalTools) * 1000) / 10 : 0;
+
+    const statusBreakdownMap = new Map<string, number>();
+    for (const tool of allTools) {
+      const statusKey = tool.status || "unknown";
+      const currentQuantity = statusBreakdownMap.get(statusKey) || 0;
+      statusBreakdownMap.set(statusKey, currentQuantity + tool.quantity);
+    }
+
+    const statusBreakdown = Array.from(statusBreakdownMap.entries()).map(
+      ([status, quantity]) => ({
+        status,
+        quantity,
+        percentage:
+          totalTools > 0
+            ? Math.round((quantity / totalTools) * 1000) / 10
+            : 0,
+      })
+    );
 
     // Get calibration alerts (tools needing calibration within 10 days)
     const now = new Date();
     const tenDaysFromNow = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
 
-    const calibrationTools = allTools.filter(tool =>
-      tool.nextCalibrationDate &&
-      new Date(tool.nextCalibrationDate) >= now &&
-      new Date(tool.nextCalibrationDate) <= tenDaysFromNow
+    const calibrationTools = allTools.filter(
+      (tool) =>
+        tool.nextCalibrationDate &&
+        new Date(tool.nextCalibrationDate) >= now &&
+        new Date(tool.nextCalibrationDate) <= tenDaysFromNow
     );
+
+    const overdueCalibrations = allTools
+      .filter(
+        (tool) =>
+          tool.nextCalibrationDate && new Date(tool.nextCalibrationDate) < now
+      )
+      .map((tool) => ({
+        id: tool.id,
+        toolName: tool.name,
+        toolCode: tool.code,
+        dueDate: tool.nextCalibrationDate!.toISOString(),
+        daysOverdue: Math.abs(
+          Math.ceil(
+            (startOfDay(now).getTime() -
+              startOfDay(new Date(tool.nextCalibrationDate!)).getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        ),
+      }));
 
     // Recent loans
     const recentLoans = await db.query.loans.findMany({
@@ -298,21 +339,108 @@ export class DatabaseStorage implements IStorage {
       status: loan.status,
     }));
 
-    const upcomingCalibrations = calibrationTools.map(tool => ({
+    const upcomingCalibrations = calibrationTools.map((tool) => ({
       id: tool.id,
       toolName: tool.name,
       toolCode: tool.code,
       dueDate: tool.nextCalibrationDate!.toISOString(),
-      daysRemaining: Math.floor((new Date(tool.nextCalibrationDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      daysRemaining: Math.floor(
+        (new Date(tool.nextCalibrationDate!).getTime() - now.getTime()) /
+          (1000 * 60 * 60 * 24)
+      ),
     }));
+
+    const activityWindowDays = 14;
+    const activityStart = startOfDay(subDays(now, activityWindowDays - 1));
+
+    const loanActivityRecords = await db
+      .select({ loanDate: loans.loanDate, quantityLoaned: loans.quantityLoaned })
+      .from(loans)
+      .where(gte(loans.loanDate, activityStart));
+
+    const returnActivityRecords = await db
+      .select({
+        returnDate: loans.returnDate,
+        quantityLoaned: loans.quantityLoaned,
+      })
+      .from(loans)
+      .where(and(isNotNull(loans.returnDate), gte(loans.returnDate, activityStart)));
+
+    const loanCountByDate = new Map<string, number>();
+    for (const record of loanActivityRecords) {
+      if (!record.loanDate) continue;
+      const key = format(record.loanDate, "yyyy-MM-dd");
+      loanCountByDate.set(
+        key,
+        (loanCountByDate.get(key) || 0) + (record.quantityLoaned || 0)
+      );
+    }
+
+    const returnCountByDate = new Map<string, number>();
+    for (const record of returnActivityRecords) {
+      if (!record.returnDate) continue;
+      const key = format(record.returnDate, "yyyy-MM-dd");
+      returnCountByDate.set(
+        key,
+        (returnCountByDate.get(key) || 0) + (record.quantityLoaned || 0)
+      );
+    }
+
+    const loanActivity = [] as Array<{ date: string; loans: number; returns: number }>;
+    for (let i = 0; i < activityWindowDays; i++) {
+      const day = new Date(activityStart);
+      day.setDate(activityStart.getDate() + i);
+      const key = format(day, "yyyy-MM-dd");
+      loanActivity.push({
+        date: key,
+        loans: loanCountByDate.get(key) || 0,
+        returns: returnCountByDate.get(key) || 0,
+      });
+    }
+
+    const activeLoanLeadersMap = new Map<
+      string,
+      {
+        toolId: string;
+        toolName: string;
+        toolCode: string;
+        quantityLoaned: number;
+      }
+    >();
+
+    for (const loan of activeLoans as any[]) {
+      if (!loan.tool) continue;
+      const existing =
+        activeLoanLeadersMap.get(loan.tool.id) ||
+        ({
+          toolId: loan.tool.id,
+          toolName: loan.tool.name,
+          toolCode: loan.tool.code,
+          quantityLoaned: 0,
+        } as const);
+
+      activeLoanLeadersMap.set(loan.tool.id, {
+        ...existing,
+        quantityLoaned: existing.quantityLoaned + (loan.quantityLoaned || 0),
+      });
+    }
+
+    const activeLoanLeaders = Array.from(activeLoanLeadersMap.values())
+      .sort((a, b) => b.quantityLoaned - a.quantityLoaned)
+      .slice(0, 5);
 
     return {
       totalTools,
       availableTools,
       loanedTools,
       calibrationAlerts: calibrationTools.length,
+      availabilityRate,
+      statusBreakdown,
       recentLoans: recentLoansFormatted,
       upcomingCalibrations,
+      overdueCalibrations,
+      loanActivity,
+      activeLoanLeaders,
     };
   }
 }

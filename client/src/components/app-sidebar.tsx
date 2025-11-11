@@ -74,10 +74,16 @@ export function AppSidebar() {
       url: "/classes",
       roles: ["admin"],
     },
-    {
+    { 
       title: "Modelos",
       icon: "label",
       url: "/models",
+      roles: ["admin"],
+    },
+    {
+      title: "Ideias de Melhoria",
+      icon: "emoji_objects",
+      url: "/improvement-ideas",
       roles: ["admin"],
     },
   ];

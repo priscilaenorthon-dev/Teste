@@ -7,6 +7,8 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import bcrypt from "bcrypt";
+import { randomUUID } from "node:crypto";
 
 const getOidcConfig = memoize(
   async () => {
@@ -53,12 +55,22 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  const existingUser = claims["sub"] ? await storage.getUser(claims["sub"]) : undefined;
+  const username = existingUser?.username
+    || claims["preferred_username"]
+    || (typeof claims["email"] === "string" ? claims["email"].split("@")[0] : undefined)
+    || claims["sub"];
+
+  const password = existingUser?.password
+    || await bcrypt.hash(String(claims["sub"] ?? username ?? randomUUID()), 10);
+
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    firstName: claims["first_name"] || claims["name"] || username || "Usuário",
+    lastName: claims["last_name"] || "", 
+    username,
+    password,
   });
 }
 

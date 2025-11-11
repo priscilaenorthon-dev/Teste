@@ -29,7 +29,11 @@ export default function Reports() {
     queryKey: ["/api/users"],
   });
 
-  const departments = Array.from(new Set(users?.map(u => u.department).filter(Boolean) || []));
+  const departments = Array.from(
+    new Set(
+      (users?.map((u) => u.department).filter((dept): dept is string => typeof dept === "string" && dept.length > 0) ?? [])
+    )
+  );
 
   const { data: loans } = useQuery({
     queryKey: ["/api/loans"],
